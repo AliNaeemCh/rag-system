@@ -1,4 +1,5 @@
-from pydantic import BaseSettings, Field
+from pydantic_settings import BaseSettings
+from pydantic import Field
 from enum import Enum
 from pathlib import Path
 
@@ -23,11 +24,12 @@ class Settings(BaseSettings):
     PDF_TRANSCRIBER_MODEL: str = "gemini-3.5-flash-lite-preview"
     PDF_TRANSCRIBER_FALLBACK_MODEL: str = "gemini-2.5-flash-lite"
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
-    GOOGLE_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    GEMINI_OPENAI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     HF_BASE_URL: str = "https://router.huggingface.co/v1"
 
     # Embeddings
     EMBEDDING_MODEL: str = "BAAI/bge-large-en-v1.5"
+    RETRIEVAL_INSTRUCTION: str = "Represent this sentence for searching relevant passages:"
     EMBEDDING_DIMENSIONS: int = 1024
 
     # Reranker
@@ -42,7 +44,7 @@ class Settings(BaseSettings):
     TOP_K: int = Field(default=5, ge=1, le=50)
 
     # Chat
-    CHAT_HISTORY_MAX_PAIRS: str = Field(default=5, ge=1)
+    CHAT_HISTORY_MAX_PAIRS: int = Field(default=5, ge=1)
     CHAT_HISTORY_TTL_SECONDS: int = Field(default=1800, ge=1)
 
     # Data

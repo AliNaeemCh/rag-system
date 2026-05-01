@@ -1,3 +1,4 @@
 .env
 misc/
 venv/
+__pycache__/

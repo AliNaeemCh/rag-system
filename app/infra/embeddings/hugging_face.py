@@ -1,22 +1,20 @@
 import logging
 from huggingface_hub import InferenceClient
-from app.infra.embeddings.base import BaseEmbeddingModel
+from app.infra.embeddings.base import BaseEmbeddingProvider
 
-logger = logging.getLogger("app.infra.embeddings.bge")
+logger = logging.getLogger("app.infra.embeddings.hugging_face")
 
 
-class BGEEmbeddingModel(BaseEmbeddingModel):
+class HuggingFaceEmbeddingProvider(BaseEmbeddingProvider):
 
     def __init__(self, client: InferenceClient, model: str):
         self.client = client
         self.model = model
 
-    def embed_query(self, query: str):
-
-        instruction = "Represent this sentence for searching relevant passages:"    # Reference: https://huggingface.co/BAAI/bge-large-en-v1.5#model-list
+    def embed_query(self, query: str, retrieval_instruction: str = ''):
 
         embedding = self.client.feature_extraction(
-            instruction + query,
+            retrieval_instruction + query,
             model=self.model
         )
 

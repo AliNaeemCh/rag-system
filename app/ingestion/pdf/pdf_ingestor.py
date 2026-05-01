@@ -2,6 +2,7 @@ import json
 import logging
 from pathlib import Path
 from app.ingestion.pdf.pdf_utils import pdf_page_to_image, get_pdf_page_count
+from app.ingestion.pdf.pdf_config import PDFIngestionConfig
 
 logger = logging.getLogger("app.ingestion.pdf.pdf_ingestor")
 
@@ -47,10 +48,15 @@ CONTENT:
 
         return response.strip()
 
+    def iter_pages(self, config: PDFIngestionConfig):
+        for page in range(config.start_page, config.end_page + 1):
+            if page not in config.excluded_pages:
+                yield page
+
     # ---------------- MAIN PIPELINE ----------------
     def ingest(
         self,
-        config,
+        config: PDFIngestionConfig,
         output_jsonl_path: str
     ):
         """
@@ -60,7 +66,7 @@ CONTENT:
         logger.info(f"Ingestion started | pdf={config.pdf_path}")
         records = []
 
-        for page in iter_pages(config):
+        for page in self.iter_pages(config):
 
             raw_text = self.extractor.extract(config.pdf_path, page)
 

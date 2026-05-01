@@ -6,23 +6,23 @@ from app.rag.retriever import Retriever
 from app.rag.reranker import re
 from app.rag.generator import Generator
 from app.rag.pipeline import RAGPipeline
-from app.infra.llm_engines.openai import LLMEngine
+from app.infra.llms.engines.openai.engine import OpenAIEngine
 from openai import OpenAI
 from sentence_transformers import CrossEncoder
-from huggingface_hub import InferenceClient
 from app.infra.vectorstore import FAISSVectorStore
-from app.infra.clients import create_openai_client
-from app.infra.embeddings.factory import create_embedding_model
+from app.infra.clients import create_openai_client, create_hf_inference_client
+from app.infra.embeddings.hugging_face import HuggingFaceEmbeddingProvider
 
 settings = Settings()
 
 openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY_SHARING)
+hf_inference_client = create_hf_inference_client(hf_token=settings.HF_TOKEN)
 reranker_client = CrossEncoder(settings.RERANKER_MODEL)
 
-llm_generator = LLMEngine(openai_client, settings.GENERATOR_MODEL)
-llm_rewriter = LLMEngine(openai_client, settings.REWRITER_MODEL)
+llm_generator = OpenAIEngine(openai_client, settings.GENERATOR_MODEL)
+llm_rewriter = OpenAIEngine(openai_client, settings.REWRITER_MODEL)
 
-embedding_model = create_embedding_model(settings)
+embedding_model = HuggingFaceEmbeddingProvider(client=hf_inference_client, model=settings.EMBEDDING_MODEL)
 vectorstore = FAISSVectorStore(embedding_model, dim=settings.EMBEDDING_DIMENSIONS)
 
 

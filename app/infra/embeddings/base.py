@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 
 
-class BaseEmbeddingModel(ABC):
+class BaseEmbeddingProvider(ABC):
 
     @abstractmethod
-    def embed_query(self, query: str):
+    def embed_query(self, query: str, retrieval_instruction: str = ''):
         pass
 
     @abstractmethod

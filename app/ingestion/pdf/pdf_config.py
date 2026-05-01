@@ -10,7 +10,7 @@ class MetadataRule:
 
 
 @dataclass
-class IngestionConfig:
+class PDFIngestionConfig:
     pdf_path: str
     start_page: int
     end_page: int
