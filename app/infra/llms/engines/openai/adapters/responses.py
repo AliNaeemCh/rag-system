@@ -1,4 +1,8 @@
 from app.infra.llms.engines.openai.adapters.base import OpenAIBaseAdapter
+import logging
+from app.core.retry_policies import openai_retry
+
+logger = logging.getLogger("app.infra.llms.engines.openai.adapters.responses")
 
 class OpenAIResponsesAdapter(OpenAIBaseAdapter):
 
@@ -49,7 +53,8 @@ class OpenAIResponsesAdapter(OpenAIBaseAdapter):
             }
 
         return payload
-
+    
+    @openai_retry(logger)
     def stream(self, request):
         payload = self.build_payload(request)
         response = self.client.responses.stream(payload)
@@ -62,9 +67,11 @@ class OpenAIResponsesAdapter(OpenAIBaseAdapter):
 
         return gen()
 
+    @openai_retry(logger)
     def create(self, request):
         payload = self.build_payload(request)
         return self.client.responses.create(**payload)
 
     def extract_text(self, response):
-        return response.output_text
+        output_text = response.output_text
+        return output_text.strip() if output_text is not None else output_text

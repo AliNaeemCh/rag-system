@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     HF_TOKEN: str
     GENERATOR_MODEL: str = "gpt-5.4-mini"
     REWRITER_MODEL: str = "gpt-5.4-nano"
-    PDF_TRANSCRIBER_MODEL: str = "gemini-3.5-flash-lite-preview"
+    PDF_TRANSCRIBER_MODEL: str = "gemini-3.1-flash-lite-preview"
     PDF_TRANSCRIBER_FALLBACK_MODEL: str = "gemini-2.5-flash-lite"
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     GEMINI_OPENAI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -34,6 +34,7 @@ class Settings(BaseSettings):
 
     # Reranker
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L12-v2"   # cross-encoder/ms-marco-MiniLM-L12-v2: 33.4M params
+    RERANKER_MODEL_PATH: Path = BASE_DIR / "models" / "cross_encoder" / "ms-marco-MiniLM-L12-v2"
 
     # Vector DB
     VECTOR_DB_TYPE: str = "faiss"
@@ -56,3 +57,5 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+
+settings = Settings()

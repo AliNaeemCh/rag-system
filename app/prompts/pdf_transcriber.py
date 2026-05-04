@@ -1,4 +1,4 @@
-PDF_TRANSCRIBER_PROMPT = """Instructions for extracting text from the image:
+PDF_TRANSCRIBER_SYSTEM_PROMPT = """Instructions for extracting text from the image:
 
 1. Text Extraction:
    - Extract **all text** from the image.
@@ -40,12 +40,21 @@ PDF_TRANSCRIBER_PROMPT = """Instructions for extracting text from the image:
 
 4. Content Continuity Check
 
-   * You will be provided with the previous page’s transcription and heading hierarchy for context.
-   * Treat this previous content as **logically preceding the current image content**.
-   * The heading structure for the current page must **continue seamlessly from the previous page**, if applicable.
-   * Maintain continuity in hierarchy level where the topic carries forward; do not reset structure unless a new top-level topic begins.
-   * If the content is a continuation of the previous page, prepend `<CONT.>` at the very beginning of the output before starting the transcription.
-   * Do not repeat anything from the previous page content.
+    * You will be given the previous section’s transcription with its heading hierarchy as context.
+    * Assume this previous section appears immediately before the current image content.
+
+    * First determine whether the current image content is a continuation of this previous section.
+
+        - If it IS a continuation:
+            * Continue the existing hierarchy seamlessly.
+            * Use appropriate subheadings (<H2>, <H3>, <H4>, etc.) based on the established structure.
+            * Do NOT introduce a new <H1> heading, because <H1> indicates a new top-level section.
+            * Prefix the output with the token <CONT.> to explicitly indicate continuation.
+
+        - If it is NOT a continuation:
+            * Start a new top-level section using <H1>.
+
+    * Do not repeat content from the previous section.
 
 5. Numerical Values:
    - Always include the **unit** of the number if known (e.g., rupees, %, kilograms).

@@ -30,12 +30,12 @@ class OpenAIEngine(BaseLLMEngine):
         temperature,
         schema,
         reasoning,
-        image,
+        image_urls,
     ):
         messages = self.adapter.build_messages(
             system_prompt,
             user_prompt,
-            image,
+            image_urls,
             history,
         )
 

@@ -1,4 +1,8 @@
 from app.infra.llms.engines.openai.adapters.base import OpenAIBaseAdapter
+import logging
+from app.core.retry_policies import openai_retry
+
+logger = logging.getLogger("app.infra.llms.engines.openai.adapters.chat_completions")
 
 class OpenAIChatCompletionsAdapter(OpenAIBaseAdapter):
 
@@ -27,7 +31,7 @@ class OpenAIChatCompletionsAdapter(OpenAIBaseAdapter):
             history +
             user
         )
-
+    
     def build_payload(self, request):
         payload = {
             "model": self.model,
@@ -50,6 +54,7 @@ class OpenAIChatCompletionsAdapter(OpenAIBaseAdapter):
 
         return payload
 
+    @openai_retry(logger)
     def stream(self, request):
         payload = self.build_payload(request)
         payload["stream"] = True
@@ -63,10 +68,12 @@ class OpenAIChatCompletionsAdapter(OpenAIBaseAdapter):
                     yield delta
 
         return gen()
-
+    
+    @openai_retry(logger)
     def create(self, request):
         payload = self.build_payload(request)
         return self.client.chat.completions.create(**payload)
 
     def extract_text(self, response):
-        return response.choices[0].message.content
+        output_text = response.choices[0].message.content
+        return output_text.strip() if output_text is not None else output_text

@@ -6,7 +6,7 @@ class BaseLLMEngine(ABC):
 
     def generate(
         self,
-        user_prompt: str,
+        user_prompt: str | None = None,
         system_prompt: str = "You are a helpful assistant.",
         history: list[dict] | None = None,
         *,
@@ -14,7 +14,8 @@ class BaseLLMEngine(ABC):
         schema=None,
         temperature=None,
         reasoning=None,
-        image=None
+        image_urls: str | list[str] | None = None,
+        return_full_response: bool = False
     ):
         history = history or []
 
@@ -25,7 +26,7 @@ class BaseLLMEngine(ABC):
             temperature,
             schema,
             reasoning,
-            image,
+            image_urls,
         )
 
         if stream:
@@ -36,7 +37,10 @@ class BaseLLMEngine(ABC):
 
         if schema:
             return json.loads(text)
-
+        
+        if return_full_response:
+            return text, response
+        
         return text
 
     # ---------------- abstract hooks ----------------
@@ -50,7 +54,7 @@ class BaseLLMEngine(ABC):
         temperature,
         schema,
         reasoning,
-        image,
+        image_urls,
     ):
         pass
 

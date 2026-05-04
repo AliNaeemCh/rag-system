@@ -8,12 +8,6 @@ from tenacity import (
     before_sleep_log,
 )
 from openai import RateLimitError, APIError, APITimeoutError
-from google.api_core.exceptions import (
-    ResourceExhausted,
-    DeadlineExceeded,
-    ServiceUnavailable,
-    InternalServerError,
-)
 
 
 # ---------------- CONFIG ----------------
@@ -45,34 +39,6 @@ def openai_retry(
         retry=retry_if_exception_type(
             (RateLimitError, APIError, APITimeoutError)
         ),
-
-        reraise=True,
-
-        before_sleep=before_sleep_log(logger, logging.WARNING),
-    )
-
-def gemini_retry(
-    logger: logging.Logger,
-    config: RetryConfig | None = None
-):
-    if config is None:
-        config = RetryConfig()
-
-    return retry(
-        stop=stop_after_attempt(config.max_attempts),
-
-        wait=wait_exponential_jitter(
-            initial=config.initial_wait,
-            max=config.max_wait,
-            jitter=config.jitter
-        ),
-
-        retry=retry_if_exception_type((
-            ResourceExhausted,
-            DeadlineExceeded,
-            ServiceUnavailable,
-            InternalServerError,
-            )),
 
         reraise=True,
 

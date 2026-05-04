@@ -1,8 +1,9 @@
-from app.ingestion.pdf.pdf_config import IngestionConfig, MetadataRule
-from app.ingestion.pdf.page_selector import parse_exclusions
+from app.ingestion.pdf.pdf_config import PDFIngestionConfig, MetadataRule
+from app.ingestion.pdf.pdf_utils import parse_ranges
 
 
-def build_pdf_config(raw: dict) -> IngestionConfig:
+def build_pdf_config(raw: dict) -> PDFIngestionConfig:
+
     metadata_rules = [
         MetadataRule(
             start=r["start"],
@@ -12,10 +13,12 @@ def build_pdf_config(raw: dict) -> IngestionConfig:
         for r in raw.get("metadata_rules", [])
     ]
 
-    return IngestionConfig(
+    return PDFIngestionConfig(
         pdf_path=raw["pdf_path"],
+        jsonl_path=raw['jsonl_path'],
         start_page=raw["start_page"],
         end_page=raw["end_page"],
-        excluded_pages=parse_exclusions(raw.get("exclude_pages", "")),
-        metadata_rules=metadata_rules
+        excluded_pages=parse_ranges(raw.get("exclude_pages", "")),
+        metadata_rules=metadata_rules,
+        resume_transcription=raw['resume_transcription']
     )

@@ -2,3 +2,5 @@
 misc/
 venv/
 __pycache__/
+logs/
+models/
