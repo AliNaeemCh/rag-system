@@ -1,41 +1,6 @@
 from pathlib import Path
 import json
 
-def reset_jsonl(output_path: Path):
-    """
-    Ensures the JSONL file is empty and ready for fresh writing.
-
-    - Creates parent directories if needed
-    - Creates the file if it doesn't exist
-    - Empties the file if it already exists
-    """
-
-    output_path.parent.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    # "w" mode truncates (empties) the file
-    with open(output_path, "w", encoding="utf-8"):
-        pass
-
-def write_jsonl(records: dict | list[dict], output_path: Path):
-    """
-    Writes structured records to JSONL.
-    """
-    if isinstance(records, dict):
-        records=[records]
-
-    output_path.parent.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    with open(output_path, "a", encoding="utf-8") as f:
-        for record in records:
-            f.write(json.dumps(record, ensure_ascii=False))
-            f.write("\n")
-
 def get_transcription_by_page(jsonl_path: Path, page_no: int):
     """
     Reads a JSONL file and returns the transcription

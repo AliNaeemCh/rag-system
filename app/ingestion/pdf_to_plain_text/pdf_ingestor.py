@@ -1,16 +1,16 @@
 import logging
 from app.core.logger import setup_logging
-from app.ingestion.pdf.pdf_utils import pdf_page_to_image
+from app.ingestion.pdf_to_plain_text.utils import pdf_page_to_image
 from app.ingestion.utils import write_jsonl, get_transcription_by_page, extract_completed_page_numbers, reset_jsonl
-from app.ingestion.pdf.pdf_config import PDFIngestionConfig
+from app.ingestion.pdf_to_plain_text.pdf_config import PDFIngestionConfig
 from app.infra.llms.engines.openai.engine import OpenAIEngine
 import re
-from app.ingestion.pdf.metadata import get_metadata
+from app.ingestion.pdf_to_plain_text.metadata import get_metadata
 from app.prompts.pdf_transcriber import PDF_TRANSCRIBER_SYSTEM_PROMPT
 from tqdm import tqdm
 
 setup_logging()
-logger = logging.getLogger("app.ingestion.pdf.pdf_ingestor")
+logger = logging.getLogger("app.ingestion.pdf_to_plain_text.pdf_ingestor")
 
 class PDFIngestor:
     """

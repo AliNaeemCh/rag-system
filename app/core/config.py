@@ -13,6 +13,10 @@ class LogLevel(str, Enum):
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
 
+class OverlapGranularity(str, Enum):
+    SENTENCE_BASED = "sentence_based"
+    WORD_BASED = "word_based"
+
 
 class Settings(BaseSettings):
     # LLM
@@ -51,6 +55,12 @@ class Settings(BaseSettings):
     # Data
     RAW_DATA_DIR: Path = BASE_DIR / "data" / "raw"
     PROCESSED_DATA_DIR: Path = BASE_DIR / "data" / "processed"
+
+    # Ingestion
+    CHUNK_SIZE: int = Field(default=400, gt=0)
+    OVERLAP_TOKENS_PCT: int = Field(default=15, ge=0, lt=100)
+    OVERLAP_GRANULARITY: OverlapGranularity = OverlapGranularity.SENTENCE_BASED
+    SEPARATE_H2s: bool = True
 
     # Misc
     LOG_LEVEL: LogLevel = LogLevel.INFO # DEBUG < INFO < WARNING < ERROR < CRITICAL

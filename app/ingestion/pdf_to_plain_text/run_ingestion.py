@@ -1,5 +1,5 @@
-from app.ingestion.pdf.pdf_config_builder import build_pdf_config
-from app.ingestion.pdf.pdf_ingestor import PDFIngestor
+from app.ingestion.pdf_to_plain_text.pdf_config_builder import build_pdf_config
+from app.ingestion.pdf_to_plain_text.pdf_ingestor import PDFIngestor
 from app.core.config import settings
 from app.infra.clients import gemini_openai_client
 from app.infra.llms.engines.openai.engine import OpenAIEngine, OpenAIAPI
