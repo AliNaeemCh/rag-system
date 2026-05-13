@@ -1,8 +1,9 @@
 import re
 from pathlib import Path
 import json
+from collections import defaultdict
 
-def reset_jsonl(output_path: Path):
+def reset_jsonl(jsonl_path: Path):
     """
     Ensures the JSONL file is empty and ready for fresh writing.
 
@@ -11,13 +12,13 @@ def reset_jsonl(output_path: Path):
     - Empties the file if it already exists
     """
 
-    output_path.parent.mkdir(
+    jsonl_path.parent.mkdir(
         parents=True,
         exist_ok=True
     )
 
     # "w" mode truncates (empties) the file
-    with open(output_path, "w", encoding="utf-8"):
+    with open(jsonl_path, "w", encoding="utf-8"):
         pass
 
 def write_jsonl(data: dict | list[dict], output_path: Path):
@@ -71,3 +72,121 @@ def replace_regex_pattern(text: str, pattern: re.Pattern, replacement: str):
         return out
 
     return pattern.sub(repl, text)
+
+def parse_ranges(range_str: str) -> list[int]:
+    """
+    Parses range strings like:
+        "1-3,5,6|9"
+
+    Rules:
+        - ranges must be ascending (1-3 valid, 3-1 invalid)
+        - invalid input raises ValueError
+        - whitespace is allowed
+
+    Examples:
+        "1-3,5,6|9" -> {1,2,3,5,6,9}
+        "2,4-6"   -> {2,4,5,6}
+    """
+
+    values = set()
+
+    if not range_str or not range_str.strip():
+        return values
+
+    for part in re.split(r"[,\|]", range_str):
+        part = part.strip()
+
+        if not part:
+            raise ValueError("Empty segment in range string.")
+
+        # Match ranges like 1-3
+        range_match = re.fullmatch(r"(\d+)\s*-\s*(\d+)", part)
+
+        if range_match:
+            start = int(range_match.group(1))
+            end = int(range_match.group(2))
+
+            # enforce ascending order
+            if start > end:
+                raise ValueError(
+                    f"Invalid range '{part}': start must be <= end."
+                )
+
+            values.update(range(start, end + 1))
+            continue
+
+        # Match single number
+        if part.isdigit():
+            values.add(int(part))
+            continue
+
+        # Anything else is invalid
+        raise ValueError(f"Invalid range segment: '{part}'")
+
+    return list(values)
+
+def combine_dicts(dict_list: list[dict], combiner: str = " | ") -> dict:
+    """
+    Combine a list of dictionaries.
+
+    Rules:
+    - If a key appears only once, keep its value as-is.
+    - If a key appears in multiple dicts:
+        * convert all values to str
+        * combine unique values with `combiner`
+
+    Example: (`combiner=', '`)
+    [
+        {"a": 1, "b": "x"},
+        {"a": 2, "c": True},
+        {"b": "y", "a": 1}
+    ]
+
+    =>
+    {
+        "a": "1, 2",
+        "b": "x, y",
+        "c": True
+    }
+    """
+
+    values = defaultdict(list)
+    counts = defaultdict(int)
+
+    # Collect values
+    for d in dict_list:
+        for k, v in d.items():
+            counts[k] += 1
+            values[k].append(v)
+
+    result = {}
+
+    for k, vals in values.items():
+        if counts[k] == 1:
+            # Keep original value if key appeared once
+            result[k] = vals[0]
+        else:
+            # Combine unique stringified values
+            seen = []
+            for v in vals:
+                sv = str(v)
+                if sv not in seen:
+                    seen.append(sv)
+
+            result[k] = combiner.join(seen)
+
+    return result
+
+def crossing_index(running_sums, target):
+    """
+    running_sums: list of cumulative sums
+    target: number to check
+
+    returns index where running sum first crosses target
+    """
+
+    for i, value in enumerate(running_sums):
+        if value > target:
+            return i
+
+    return -1

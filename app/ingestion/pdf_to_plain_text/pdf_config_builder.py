@@ -1,5 +1,5 @@
 from app.ingestion.pdf.pdf_config import PDFIngestionConfig, MetadataRule
-from app.ingestion.pdf.pdf_utils import parse_ranges
+from app.core.utils import parse_ranges
 
 
 def build_pdf_config(raw: dict) -> PDFIngestionConfig:

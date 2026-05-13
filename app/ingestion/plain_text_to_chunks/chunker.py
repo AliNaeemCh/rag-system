@@ -1,15 +1,11 @@
-import logging
 from app.ingestion.plain_text_to_chunks.config import ChunkingConfig
 from app.ingestion.plain_text_to_chunks.utils.processors import join_texts
 from app.ingestion.plain_text_to_chunks.utils.overlap import generate_overlap_texts
 from app.ingestion.plain_text_to_chunks.utils.hierarchy import prepend_hierarchy
-from app.core.logger import setup_logging
 from app.core.tokenizer import Tokenizer
-from app.core.utils import find_positions, replace_regex_pattern
+from app.core.utils import find_positions, replace_regex_pattern, combine_dicts, crossing_index
 import re
-
-setup_logging()
-logger = logging.getLogger("app.ingestion.plain_text_to_chunks.chunking.chunker")
+from itertools import accumulate
 
 
 class Chunker:
@@ -24,7 +20,7 @@ class Chunker:
         self.tokenizer = tokenizer
         self.config = config
     
-    def chunk_sections(self, sections_sentences: list[list[str]]) -> list[str]:
+    def chunk_sections(self, sections_sentences: list[list[str]], metadata: list[dict] | None = None) -> list[str]:
         """
         CHUNKING METHODOLOGY:
         * Each chunk generally stays within the defined `chunk_size` token limit, with minor deviations occurring occasionally.
@@ -47,10 +43,18 @@ class Chunker:
         overlap_tokens_count = round(self.config.chunk_size * (self.config.chunk_overlap_pct / 100))
         if self.config.separate_h2s:
             max_merging_threshold = round((self.config.chunk_size - overlap_tokens_count) * 0.5)    # 50% of effective chunk size
+            # Makes sure too small sections (possibly titles only or one-liner intros) are are always merged with other sections
+            abs_max_tokens_for_section_merging = 50    
         else:
             max_merging_threshold = float('inf')
+            abs_max_tokens_for_section_merging = float('inf')
         all_sentences_counter = 0
         chunks = []
+        # <For metadata handling>
+        chunks_metadata = []
+        section_sentences_count = [len(sentences) for sentences in sections_sentences]
+        section_sentences_count_running_sums = list(accumulate(section_sentences_count))
+        # <For metadata handling>
         j = 0
         len_sections_sentences = len(sections_sentences)
         next_section_total_tokens = None
@@ -64,7 +68,9 @@ class Chunker:
             if j+1 < len_sections_sentences:
                 next_section_total_tokens = self._calc_total_section_tokens(sections_sentences[j+1])
             # Allow sections to merge if total section size is below threshold and next section is not <H1>
-            if (current_section_total_tokens + next_section_total_tokens) < max_merging_threshold and j+1 < len_sections_sentences \
+            if j+1 < len_sections_sentences and \
+            ((current_section_total_tokens + next_section_total_tokens) < max_merging_threshold
+             or current_section_total_tokens <= abs_max_tokens_for_section_merging) \
                 and "<H1>" not in sections_sentences[j+1][0]:
                 sections_sentences[j+1] = sections_sentences[j] + sections_sentences[j+1]
                 next_section_total_tokens = current_section_total_tokens + next_section_total_tokens
@@ -114,6 +120,14 @@ class Chunker:
                     final_text = join_texts(current_sentences)
                     final_chunk = prepend_hierarchy(final_text, hierarchy)
                     chunks.append(final_chunk)
+                    if metadata:
+                        metadata_idx = crossing_index(section_sentences_count_running_sums, target=all_sentences_counter-1)
+                        if metadata_idx > -1:
+                            chunks_metadata.append(metadata[metadata_idx])
+                        else:
+                            chunks_metadata.append({})
+                    else:
+                        chunks_metadata.append({})
                     # Build overlap sentences for next chunk provided the last section/sub-section is NOT completed
                     k = 0
                     while not sections_sentences[j][i-k].strip():
@@ -141,9 +155,19 @@ class Chunker:
                 final_text = join_texts(current_sentences)
                 final_chunk = prepend_hierarchy(final_text, hierarchy)
                 chunks.append(final_chunk)
+                if metadata:
+                    metadata_idx = crossing_index(section_sentences_count_running_sums, target=all_sentences_counter-1)
+                    if metadata_idx > -1:
+                        chunks_metadata.append(metadata[metadata_idx])
+                    else:
+                        chunks_metadata.append({})
+                else:
+                    chunks_metadata.append({})
             j += 1
         if not self.config.silent:
             print(f'\nTotal long sentences: {total_long_sentences}')
+        if metadata:
+            return chunks, chunks_metadata
         return chunks
 
     def _calc_total_section_tokens(self, section_sentences: list[str]):

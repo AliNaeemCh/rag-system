@@ -1,7 +1,8 @@
 import logging
 from app.core.logger import setup_logging
 from app.ingestion.pdf_to_plain_text.utils import pdf_page_to_image
-from app.ingestion.utils import write_jsonl, get_transcription_by_page, extract_completed_page_numbers, reset_jsonl
+from app.ingestion.utils import get_transcription_by_page, extract_completed_page_numbers
+from app.core.utils import write_jsonl, reset_jsonl
 from app.ingestion.pdf_to_plain_text.pdf_config import PDFIngestionConfig
 from app.infra.llms.engines.openai.engine import OpenAIEngine
 import re
@@ -22,7 +23,7 @@ class PDFIngestor:
         self.llm_engine = llm_engine
         self.fallback_llm_engine = fallback_llm_engine
 
-    def extract_partial_content(self, text: str) -> str:
+    def _extract_partial_content(self, text: str) -> str:
         """
         Extract:
         - the LAST <H1>
@@ -78,7 +79,7 @@ class PDFIngestor:
 
         return "\n".join(output)
     
-    def get_pages_info(self, pdf_config: PDFIngestionConfig):
+    def _get_pages_info(self, pdf_config: PDFIngestionConfig):
         pages_completed = []
         if pdf_config.resume_transcription:
             pages_completed = extract_completed_page_numbers(pdf_config.jsonl_path)
@@ -97,7 +98,7 @@ class PDFIngestor:
         """
         Full ingestion pipeline.
         """
-        pages_list, pages_completed, total_pages = self.get_pages_info(pdf_config)
+        pages_list, pages_completed, total_pages = self._get_pages_info(pdf_config)
         if not pdf_config.resume_transcription:
             logger.info(f"Ingestion started | pdf={pdf_config.pdf_path}")
             reset_jsonl(pdf_config.jsonl_path)
@@ -116,7 +117,7 @@ class PDFIngestor:
                 if page_no not in pages_completed:
                     break
             previous_pages_transcription = "\n\n".join(previous_pages_transcripts)
-            previous_section_transcription = self.extract_partial_content(previous_pages_transcription)
+            previous_section_transcription = self._extract_partial_content(previous_pages_transcription)
         else:
             previous_section_transcription = "NA"
         for i, page_no in enumerate(tqdm(pages_list, initial=len(pages_completed), total=total_pages)):
@@ -140,9 +141,9 @@ class PDFIngestor:
                 if i + 1 < len(pages_list) and pages_list[i+1] - page_no == 1:
                     if '<CONT.>' in trancribed_page and previous_section_transcription != "NA":
                         combined_content = previous_section_transcription + '\n\n' + trancribed_page
-                        previous_section_transcription = self.extract_partial_content(combined_content)
+                        previous_section_transcription = self._extract_partial_content(combined_content)
                     else:
-                        previous_section_transcription = self.extract_partial_content(trancribed_page)
+                        previous_section_transcription = self._extract_partial_content(trancribed_page)
                 else:
                     previous_section_transcription = ""
                 previous_section_transcription = previous_section_transcription if previous_section_transcription != "" else "NA"

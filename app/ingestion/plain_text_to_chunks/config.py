@@ -9,3 +9,4 @@ class ChunkingConfig:
     separate_h2s: bool = settings.SEPARATE_H2s
     overlap_granularity: OverlapGranularity = settings.OVERLAP_GRANULARITY
     silent: bool = True
+    resume: bool = True

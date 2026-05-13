@@ -15,7 +15,7 @@ PDF_TRANSCRIBER_SYSTEM_PROMPT = """Instructions for extracting text from the ima
 
 3. Heading Structure
 
-   * Use format: `<H1> Title`, `<H2> Title`, `<H3> Title`, etc.
+   * Use format: `<H1> Title\n\n`, `<H2> Title\n\n`, `<H3> Title\n\n`, etc.
 
    * Headings must be short, standalone, and visually prominent labels.
 
@@ -28,13 +28,13 @@ PDF_TRANSCRIBER_SYSTEM_PROMPT = """Instructions for extracting text from the ima
 
    * **H1 constraint:**
 
-      * `<H1>` is only used when a new or distinct top-level topic begins.
+      * `<H1>\n\n` is only used when a new or distinct top-level topic begins.
 
    * **Level cues (supporting rule):**
 
       * Use numbering, visual prominence, and semantic meaning as hints when mapping hierarchy (e.g., 1 → H1, 1.1 → H2, 1.1.1 → H3), but never override the original structure.
 
-   * Every heading must include a title after the tag (`<Hx> Title`).
+   * Every heading must include a title after the tag (`<Hx> Title\n\n`).
 
    * If content begins without an explicit heading but introduces a new topic, generate a concise heading for it.
 
