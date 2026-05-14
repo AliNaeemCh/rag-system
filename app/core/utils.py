@@ -88,10 +88,16 @@ def parse_ranges(range_str: str) -> list[int]:
         "2,4-6"   -> {2,4,5,6}
     """
 
-    values = set()
-
     if not range_str or not range_str.strip():
-        return values
+        return []
+
+    values = []
+    seen = set()
+
+    def add(x: int):
+        if x not in seen:
+            seen.add(x)
+            values.append(x)
 
     for part in re.split(r"[,\|]", range_str):
         part = part.strip()
@@ -99,31 +105,29 @@ def parse_ranges(range_str: str) -> list[int]:
         if not part:
             raise ValueError("Empty segment in range string.")
 
-        # Match ranges like 1-3
+        # Match range like 1-3
         range_match = re.fullmatch(r"(\d+)\s*-\s*(\d+)", part)
 
         if range_match:
             start = int(range_match.group(1))
             end = int(range_match.group(2))
 
-            # enforce ascending order
             if start > end:
-                raise ValueError(
-                    f"Invalid range '{part}': start must be <= end."
-                )
+                raise ValueError(f"Invalid range '{part}': start must be <= end.")
 
-            values.update(range(start, end + 1))
+            for i in range(start, end + 1):
+                add(i)
+
             continue
 
-        # Match single number
+        # Single number
         if part.isdigit():
-            values.add(int(part))
+            add(int(part))
             continue
 
-        # Anything else is invalid
         raise ValueError(f"Invalid range segment: '{part}'")
 
-    return list(values)
+    return values
 
 def combine_dicts(dict_list: list[dict], combiner: str = " | ") -> dict:
     """

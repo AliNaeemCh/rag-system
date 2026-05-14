@@ -1,29 +1,16 @@
 import os
 import json
 from app.ingestion.plain_text_to_chunks.utils.processors import clean_transcription
-from app.core.utils import find_positions, replace_regex_pattern, combine_dicts, parse_ranges
+from app.core.utils import find_positions, replace_regex_pattern, combine_dicts, parse_ranges, crossing_index
 from typing import Iterator
 from pathlib import Path
 import re
 from itertools import accumulate
 
-def crossing_index(running_sums, target):
-    """
-    running_sums: list of cumulative sums
-    target: number to check
-
-    returns index where running sum first crosses target
-    """
-
-    for i, value in enumerate(running_sums):
-        if value > target:
-            return i
-
-    return -1
-
 def iter_sections(file_path: Path, h_tags: list[str], last_chunk: dict | None=None) -> Iterator[dict]:
     buffer = []
     metadata = []
+    METADATA_COMBINER = " | "
     processed_bytes = 0
     total_size = os.path.getsize(file_path)
 
@@ -37,9 +24,11 @@ def iter_sections(file_path: Path, h_tags: list[str], last_chunk: dict | None=No
                 obj = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            # if obj['page_no'] > 10:
+            #     return
             # <RESUMPTION LOGIC>
-            if last_chunk:
-                last_chunk_page_no = parse_ranges(last_chunk['metadata']['page_no'])[-1]    # TO CHECK
+            if last_chunk and 'page_no' in obj and last_chunk.get('metadata', {}).get('page_no') is not None:
+                last_chunk_page_no = parse_ranges(last_chunk['metadata']['page_no'])[-1]
                 last_chunk_content = last_chunk['content']
                 if obj['page_no'] == last_chunk_page_no:
                     last_chunk_content = replace_regex_pattern(text=last_chunk_content, pattern=re.compile(r"H(\d+):"), replacement=r"<H\1>")    # Hx: -> <Hx>
@@ -60,9 +49,9 @@ def iter_sections(file_path: Path, h_tags: list[str], last_chunk: dict | None=No
             # <RESUMPTION LOGIC>
 
             transcription = clean_transcription(obj['transcription'])
-            page_metadata = obj['metadata']
+            page_metadata = obj.get('metadata', {})
             if 'page_no' in obj:
-                page_metadata['page_no'] = obj['page_no']
+                page_metadata['page_no'] = str(obj['page_no'])
             metadata.append(page_metadata)
             buffer.append(transcription)
             buffer_str = "".join(buffer)
@@ -71,18 +60,46 @@ def iter_sections(file_path: Path, h_tags: list[str], last_chunk: dict | None=No
             h_tag_positions = find_positions(text=buffer_str, pattern=h_tags)
             len_h_tag_positions = len(h_tag_positions)
             processed_bytes += len(line.encode("utf-8")) + 1
+            # print('\n\n-start-\n\n')
+            # print('BUFFER IS: ', buffer)
+            # print('BUFFER STR IS: ', buffer_str)
+            # print('buffer_chars_count is: ', buffer_chars_count)
+            # print('buffer_chars_count_running_sum is: ', buffer_chars_count_running_sum)
+            # print('HTAG POS ARE: ',  h_tag_positions)
+            # print('METADATA ARE: ',  metadata)
+            # print('\n\n-end-\n\n')
             if len_h_tag_positions > 0:
-                for i in range(len_h_tag_positions - 1):
-                    metadata_idx = crossing_index(buffer_chars_count_running_sum, h_tag_positions[i])
+                i = 0
+                while i < len_h_tag_positions - 1 :
+                    metadata_idx_start = crossing_index(buffer_chars_count_running_sum, h_tag_positions[i])
+                    target_pos_for_metadata_idx_end = h_tag_positions[i] + len(buffer_str[h_tag_positions[i]: h_tag_positions[i + 1]].rstrip()) - 1
+                    # print('target_pos_for_metadata_idx_end: ', target_pos_for_metadata_idx_end)
+                    metadata_idx_end = crossing_index(buffer_chars_count_running_sum, target_pos_for_metadata_idx_end)
+                    selected_metadata = combine_dicts([metadata[metadata_idx_start], metadata[metadata_idx_end]], combiner=METADATA_COMBINER)
+                    # print('i is: ', i)
+                    # print('selected hpos is: ', h_tag_positions[i])
+                    # print('metadata_start_idx is: ', metadata_idx_start)
+                    # print('metadata_idx_end is: ', metadata_idx_end)
+                    # print('selected metadata is: ', selected_metadata)
+                    # print('selected section is: ', buffer_str[h_tag_positions[i]: h_tag_positions[i + 1]].strip(" "))
+                    if METADATA_COMBINER in selected_metadata.get('page_no', ""):
+                        pages_range = parse_ranges(selected_metadata['page_no'])
+                        # print(f'FOR STR RANGE {selected_metadata['page_no']}, THE LIST RANGE IS: {pages_range}\n')
+                        selected_metadata['page_no'] = f"{pages_range[0]}-{pages_range[-1]}"
+                        # print('METADATA IN IS: ', selected_metadata)
                     yield {
                         "section": buffer_str[h_tag_positions[i]: h_tag_positions[i + 1]].strip(" "),
-                        "metadata": metadata[metadata_idx],
+                        "metadata": selected_metadata,
                         "progress": processed_bytes / total_size
                     }
+                    i += 1
+                if i > 0:
+                    metadata = [metadata[-1]]
 
                 buffer_str = buffer_str[h_tag_positions[-1]:]
                 buffer = [buffer_str]
-                metadata = [metadata[-1]]
+                if len(metadata) > 1:
+                    metadata = [combine_dicts(metadata, combiner=METADATA_COMBINER)]
             else:
                 raise Exception(f"<Hx> tag expected in line {line_no} but not found!")
 
@@ -90,6 +107,7 @@ def iter_sections(file_path: Path, h_tags: list[str], last_chunk: dict | None=No
             buffer_str = "".join(buffer)
             yield {
                 "section": buffer_str.strip(" "),
+                "metadata": metadata[-1],
                 "progress": 1.0
             }
 

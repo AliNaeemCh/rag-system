@@ -18,7 +18,6 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
     try:
         pbar = tqdm(total=100)
         chunker = Chunker(tokenizer=tokenizer, config=chunking_config)
-
         sections_sentences = []
         metadata = []
         h_tags = ["<H1>", "<H2>"] if chunking_config.separate_h2s else ["<H1>"]
@@ -32,6 +31,19 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
             reset_jsonl(jsonl_path=output_path)
             last_chunk = None
             logger.info("Chunking Started")
+
+        def chunk_and_save():
+            chunks, chunks_metadata = chunker.chunk_sections(sections_sentences, metadata=metadata)
+
+            data = [
+                {
+                    "metadata": chunks_metadata[i],
+                    "content": chunk
+                }
+                for i, chunk in enumerate(chunks)
+            ]
+            write_jsonl(data, output_path)
+
         for output in iter_sections(input_path, h_tags=h_tags, last_chunk=last_chunk):
             section = output["section"]
             progress = output["progress"]
@@ -40,15 +52,7 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
             pbar.refresh()
 
             if "<H1>" in section and sections_sentences:
-                chunks, chunks_metadata = chunker.chunk_sections(sections_sentences, metadata=metadata)
-                data = [
-                    {
-                        "metadata": chunks_metadata[i],
-                        "content": chunk
-                    }
-                    for i, chunk in enumerate(chunks)
-                ]
-                write_jsonl(data, output_path)
+                chunk_and_save()
                 sections_sentences = []
                 metadata = []
             # Gathering all sub-sections of an H1-level section
@@ -65,9 +69,13 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
                     sentences.extend([sent.text for sent in doc.sents])
             sections_sentences.append(sentences)
             metadata.append(output['metadata'].copy())
+        if sections_sentences:
+            chunk_and_save()
         pbar.close()
+        logger.info("Chunking Completed")
+
     except Exception as e:
-        logger.error(f"Chunking failed! Error: {e}")
+        logger.error(f"Chunking Failed! Error: {e}")
         print(traceback.format_exc())
 
 chunking_config = ChunkingConfig(resume=False)  # Default params
