@@ -1,12 +1,12 @@
 import logging
-
-logger = logging.getLogger("app.rag.pipeline")
 from app.rag.message_rewriter import MessageRewriter
 from app.rag.chat_history import ChatHistory
+from app.rag.retriever import Retriever
 
+logger = logging.getLogger("app.rag.pipeline")
 
 class RAGPipeline:
-    def __init__(self, chat_history: ChatHistory, rewriter: MessageRewriter, retriever, reranker, generator):
+    def __init__(self, chat_history: ChatHistory, rewriter: MessageRewriter, retriever: Retriever, reranker, generator):
         self.chat_history = chat_history
         self.rewriter = rewriter
         self.retriever = retriever

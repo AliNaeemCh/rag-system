@@ -49,3 +49,9 @@ def get_pdf_page_count(pdf_path: str) -> int:
     """
     reader = PdfReader(pdf_path)
     return len(reader.pages)
+
+def get_metadata(page: int, rules):
+    for rule in rules:
+        if rule.start <= page <= rule.end:
+            return rule.metadata
+    return {}

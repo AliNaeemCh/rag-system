@@ -2,6 +2,8 @@ import re
 from pathlib import Path
 import json
 from collections import defaultdict
+from typing import Iterator
+import os
 
 def reset_jsonl(jsonl_path: Path):
     """
@@ -40,6 +42,68 @@ def write_jsonl(data: dict | list[dict], output_path: Path):
 
     with open(output_path, "a", encoding="utf-8") as f:
         f.write(lines)
+
+def load_jsonl(path: Path, return_progress=False) -> Iterator[dict | tuple[dict, float]]:
+    """
+    Lazy streaming JSONL reader (1 line at a time)
+    If `return_progress` is set True, it returns the progress which is a float in range 0 to 1
+    """
+    total_size = os.path.getsize(path)
+    processed_bytes = 0
+    
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            processed_bytes += len(line.encode("utf-8")) + 1
+            progress = processed_bytes / total_size
+            if not line.strip():
+                continue
+            try:
+                obj = json.loads(line)
+                if return_progress:
+                    yield obj, progress
+                else:
+                    yield obj
+            except json.JSONDecodeError:
+                continue
+
+def write_json(data: dict | list[dict], output_path: Path):
+    """
+    Writes structured records to a JSON file (not JSONL).
+    """
+
+    # Normalize to list
+    if isinstance(data, dict):
+        data = [data]
+
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
+
+def reset_json(json_path: Path):
+    """
+    Ensures the JSON file is initialized and ready for fresh writing.
+
+    - Creates parent directories if needed
+    - Creates the file if it doesn't exist
+    - Resets it to an empty JSON array
+    """
+
+    json_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump([], f)
 
 def find_positions(text: str, pattern: str | list[str] | re.Pattern, find_first=False) -> list[int] | int | None:
     """

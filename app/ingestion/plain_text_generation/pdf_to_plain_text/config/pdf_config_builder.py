@@ -1,4 +1,4 @@
-from app.ingestion.pdf.pdf_config import PDFIngestionConfig, MetadataRule
+from app.ingestion.plain_text_generation.pdf_to_plain_text.config.pdf_config import PDFIngestionConfig, MetadataRule
 from app.core.utils import parse_ranges
 
 

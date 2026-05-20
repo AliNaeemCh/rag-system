@@ -1,6 +1,6 @@
-from app.infra.llms.engines.base import BaseLLMEngine
-from app.infra.llms.engines.openai.adapters.responses import OpenAIResponsesAdapter
-from app.infra.llms.engines.openai.adapters.chat_completions import OpenAIChatCompletionsAdapter
+from app.infra.llm_engines.base import BaseLLMEngine
+from app.infra.llm_engines.openai.adapters.responses import OpenAIResponsesAdapter
+from app.infra.llm_engines.openai.adapters.chat_completions import OpenAIChatCompletionsAdapter
 from enum import Enum
 
 class OpenAIAPI(str, Enum):

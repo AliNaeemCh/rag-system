@@ -1,17 +1,17 @@
 import logging
 from app.core.logger import setup_logging
-from app.ingestion.pdf_to_plain_text.utils import pdf_page_to_image
+from app.ingestion.plain_text_generation.pdf_to_plain_text.utils import pdf_page_to_image
 from app.ingestion.utils import get_transcription_by_page, extract_completed_page_numbers
 from app.core.utils import write_jsonl, reset_jsonl
-from app.ingestion.pdf_to_plain_text.pdf_config import PDFIngestionConfig
-from app.infra.llms.engines.openai.engine import OpenAIEngine
+from app.ingestion.plain_text_generation.pdf_to_plain_text.config.pdf_config import PDFIngestionConfig
+from app.infra.llm_engines.openai.engine import OpenAIEngine
 import re
-from app.ingestion.pdf_to_plain_text.metadata import get_metadata
+from app.ingestion.plain_text_generation.pdf_to_plain_text.utils import get_metadata
 from app.prompts.pdf_transcriber import PDF_TRANSCRIBER_SYSTEM_PROMPT
 from tqdm import tqdm
 
 setup_logging()
-logger = logging.getLogger("app.ingestion.pdf_to_plain_text.pdf_ingestor")
+logger = logging.getLogger("app.ingestion.plain_text_generation.pdf_to_plain_text.pdf_ingestor")
 
 class PDFIngestor:
     """
@@ -151,8 +151,8 @@ class PDFIngestor:
                 record['llm_model'] = llm_engine.model
                 record['total_tokens'] = response.usage.total_tokens
                 write_jsonl(record, output_path=pdf_config.jsonl_path)
-            except Exception as e:
-                logger.error(f"Page {page_no} transcription failed! Please resume the process manually! Error: {e}")
+            except Exception:
+                logger.exception(f"Page {page_no} transcription failed! Please resume the process manually!")
                 return
         logger.info(
             f"Ingestion completed | pdf={pdf_config.pdf_path}"

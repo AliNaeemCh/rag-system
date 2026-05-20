@@ -1,0 +1,23 @@
+[
+  {
+    "total_chunks": 652,
+    "total_tokens": 171334,
+    "avg_tokens": 262.7822085889571,
+    "min_tokens": 23,
+    "max_tokens": 447,
+    "avg_overlap": 17.141104294478527,
+    "chunk_size_limit": 400,
+    "overlap_limit": 60,
+    "chapters": {
+      "Company Profile": 55,
+      "About Systems": 48,
+      "Human Capital Division": 16,
+      "Key Financials & Business Highlights": 20,
+      "Sustainability at a Glance": 45,
+      "Shareholder's Key Information": 82,
+      "Corporate Governance": 16,
+      "Consolidated Financial Statements": 363,
+      "unknown": 7
+    }
+  }
+]

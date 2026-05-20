@@ -1,7 +1,7 @@
-from app.ingestion.plain_text_to_chunks.config import ChunkingConfig
-from app.ingestion.plain_text_to_chunks.utils.processors import join_texts
-from app.ingestion.plain_text_to_chunks.utils.overlap import generate_overlap_texts
-from app.ingestion.plain_text_to_chunks.utils.hierarchy import prepend_hierarchy
+from app.ingestion.chunks_generation.config import ChunkingConfig
+from app.ingestion.chunks_generation.utils.processors import join_texts
+from app.ingestion.chunks_generation.utils.overlap import generate_overlap_texts
+from app.ingestion.chunks_generation.utils.hierarchy import prepend_hierarchy
 from app.core.tokenizer import Tokenizer
 from app.core.utils import find_positions, replace_regex_pattern, combine_dicts, crossing_index
 import re
@@ -30,7 +30,8 @@ class Chunker:
         * Sections below H2-level (H3, H4, etc.) are not separated and share the same chunks.
         * Chunk overlapping is also sentence-based.
         * Overlapping between chunks has tokens (`chunk_overlap_tokens`) based on the percentage of chunk size as defined by `chunk_size_pct`.
-        * There is no overlap with the previous chunk when the previous chunk already fully contains a section and the current chunk begins a new section.
+        * By default, there is no cross-section overlap (The overlap text can't include a section other than the current.)
+        * By default, there is no overlap with the previous chunk when the previous chunk already fully contains a section and the current chunk begins a new section.
         * It is ensured that no chunk ends with only the title of a section, without its content.
         * Hierarchy of sections is prepended to the content in every chunk.
         * EDGE CASES:
@@ -45,8 +46,9 @@ class Chunker:
             final_chunk = prepend_hierarchy(final_text, hierarchy)
             chunks.append(final_chunk)
             # Metadata
+            final_chunk_tokens = self.tokenizer.count_tokens(final_chunk)
             additional_metadata = {
-                'total_tokens': current_tokens,
+                'total_tokens': final_chunk_tokens,
                 'total_overlap_tokens': total_overlap_tokens
             }
             if metadata:
@@ -142,36 +144,43 @@ class Chunker:
                     # Save current chunk with metadata
                     finalize_chunk()
 
-                    # Build overlap sentences for next chunk provided the last section/sub-section is NOT completed
-                    k = 0
-                    while not sections_sentences[j][i-k].strip():
-                        k += 1
-                    new_section_starts = find_positions(sections_sentences[j][i-k], pattern=re.compile(r"<H\d+>"), find_first=True) is not None
-                    if not new_section_starts:
-                        current_sentences_copy = current_sentences
-                        current_sentences, current_tokens = generate_overlap_texts(current_sentences_copy, overlap_tokens_count, granularity=self.config.overlap_granularity, hierarchy=hierarchy)
-                        total_overlap_tokens = current_tokens
-                        stripped_overlap_tokens = sum([self.tokenizer.count_tokens(s.strip()) for s in current_sentences])
-                        if stripped_overlap_tokens == 0:
-                            # EDGE CASE: If sentence-based granularity produces no overlapping, last sentence of the previous chunk will be added to the next one if it fits. Otherwise no overlapping
-                            k = 1
-                            last_sentence_tokens = 0
-                            # Makes sure last sentence is picked even if the last element of `current_sentences` is a new line (\n) or a blank space
-                            while True:
-                                last_sentence_tokens += self.tokenizer.count_tokens(current_sentences_copy[-k])
-                                if current_sentences_copy[-k].strip():
-                                    break
-                                k += 1
-                            t = 0
-                            # Makes sure proper next sentence is picked and not a new line (\n) or a blank space
-                            while i + t < len(sections_sentences[j]) and not sections_sentences[j][i+t].strip():
-                                t += 1
-                            next_sentence_tokens = self.tokenizer.count_tokens(sections_sentences[j][i+t])
-                            if last_sentence_tokens + next_sentence_tokens <= self.config.chunk_size:
-                                current_sentences = current_sentences_copy[-k:]
-                                current_tokens = total_overlap_tokens = last_sentence_tokens
-                            else:
-                                current_sentences, current_tokens, total_overlap_tokens = [], 0, 0
+                    # Build overlap sentences for next chunk
+                    if overlap_tokens_count > 0:
+                        k = 0
+                        while not sections_sentences[j][i-k].strip():
+                            k += 1
+                        new_section_starts = find_positions(sections_sentences[j][i-k], pattern=re.compile(r"<H\d+>"), find_first=True) is not None
+                        if not new_section_starts or self.config.cross_section_overlap:
+                            current_sentences_copy = current_sentences
+                            current_sentences, current_tokens = generate_overlap_texts(current_sentences_copy, overlap_tokens_count, granularity=self.config.overlap_granularity,
+                                                                                       cross_section_overlap=self.config.cross_section_overlap, hierarchy=hierarchy)
+                            stripped_overlap_tokens = sum([self.tokenizer.count_tokens(s.strip()) for s in current_sentences])
+                            if stripped_overlap_tokens == 0:
+                                # EDGE CASE: If no overlapping is produced, last sentence of the previous chunk will be added to the next one if it fits. Otherwise no overlapping
+                                k = 1
+                                last_sentence_tokens = 0
+                                # Makes sure last sentence is picked even if the last element of `current_sentences` is a new line (\n) or a blank space
+                                while True:
+                                    last_sentence_tokens += self.tokenizer.count_tokens(current_sentences_copy[-k])
+                                    if current_sentences_copy[-k].strip():
+                                        break
+                                    k += 1
+                                t = 0
+                                next_sentence_tokens = 0
+                                # Makes sure proper next sentence is picked and not a new line (\n) or a blank space
+                                while i + t < len(sections_sentences[j]):
+                                    next_sentence_tokens += self.tokenizer.count_tokens(sections_sentences[j][i+t])
+                                    if sections_sentences[j][i+t].strip():
+                                        break
+                                    t += 1
+                                if last_sentence_tokens + next_sentence_tokens <= self.config.chunk_size:
+                                    current_sentences = current_sentences_copy[-k:]
+                                    current_tokens = last_sentence_tokens
+                                else:
+                                    current_sentences, current_tokens = [], 0
+                        else:
+                            current_sentences, current_tokens = [], 0
+                        total_overlap_tokens = self.tokenizer.count_tokens(join_texts(current_sentences))
                     else:
                         current_sentences, current_tokens, total_overlap_tokens = [], 0, 0
             # Add final chunk

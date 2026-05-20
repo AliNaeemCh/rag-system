@@ -1,18 +1,18 @@
 from tqdm import tqdm
-from app.ingestion.plain_text_to_chunks.utils.parsers import iter_sections, extract_last_chunk
-from app.ingestion.plain_text_to_chunks.chunker import Chunker
-from app.ingestion.plain_text_to_chunks.config import ChunkingConfig
+from app.ingestion.chunks_generation.utils.parsers import iter_sections, extract_last_chunk
+from app.ingestion.chunks_generation.chunker import Chunker
+from app.analysis.chunks.generate_chunks_stats import generate_chunks_stats
+from app.ingestion.chunks_generation.config import ChunkingConfig
 from app.core.utils import write_jsonl, reset_jsonl, find_positions
 from app.core.tokenizer import tokenizer
-from app.ingestion.plain_text_to_chunks.utils.nlp import nlp
+from app.ingestion.chunks_generation.utils.nlp import nlp
 from pathlib import Path
 from app.core.config import settings
 import logging
 from app.core.logger import setup_logging
-import traceback
 import re
 setup_logging()
-logger = logging.getLogger("app.ingestion.plain_text_to_chunks.run")
+logger = logging.getLogger("app.ingestion.chunks_generation.run")
 
 def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path: Path):
     try:
@@ -47,9 +47,7 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
         for output in iter_sections(input_path, h_tags=h_tags, last_chunk=last_chunk):
             section = output["section"]
             progress = output["progress"]
-
             pbar.n = int(progress * 100)
-            pbar.refresh()
 
             if "<H1>" in section and sections_sentences:
                 chunk_and_save()
@@ -69,18 +67,28 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
                     sentences.extend([sent.text for sent in doc.sents])
             sections_sentences.append(sentences)
             metadata.append(output['metadata'].copy())
+            pbar.refresh()
+
         if sections_sentences:
             chunk_and_save()
         pbar.close()
         logger.info("Chunking Completed")
 
-    except Exception as e:
-        logger.error(f"Chunking Failed! Error: {e}")
-        print(traceback.format_exc())
+    except Exception:
+        logger.exception("Chunking Failed!")
 
 chunking_config = ChunkingConfig(resume=False)  # Default params
+
+chunks_file_name = "sys_annual_2025_chunks.jsonl"
+
 run_pipeline(
     chunking_config=chunking_config,
     input_path=settings.PROCESSED_DATA_DIR / "SYS Limited Annual - 2025.jsonl",
-    output_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl"
+    output_path=settings.PROCESSED_DATA_DIR / chunks_file_name
+)
+
+generate_chunks_stats(
+    path=settings.PROCESSED_DATA_DIR / chunks_file_name,
+    chunk_size=chunking_config.chunk_size,
+    chunk_overlap_pct=chunking_config.chunk_overlap_pct
 )

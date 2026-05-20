@@ -1,7 +1,7 @@
 import logging
 from app.prompts.rag import REWRITER_SYSTEM_PROMPT, REWRITER_SCHEMA
-from app.prompts.prompt_utils import build_rewriter_user_prompt, build_openai_messages
-from app.infra.llm_engines.openai import OpenAIEngine
+from app.prompts.prompt_utils import build_rewriter_user_prompt
+from app.infra.llm_engines.openai.engine import OpenAIEngine
 
 logger = logging.getLogger("app.rag.rewriter")
 

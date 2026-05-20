@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     HF_TOKEN: str
     GENERATOR_MODEL: str = "gpt-5.4-mini"
     REWRITER_MODEL: str = "gpt-5.4-nano"
-    PDF_TRANSCRIBER_MODEL: str = "gemini-3.1-flash-lite-preview"
+    PDF_TRANSCRIBER_MODEL: str = "gemini-3.1-flash-lite"
     PDF_TRANSCRIBER_FALLBACK_MODEL: str = "gemini-2.5-flash-lite"
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     GEMINI_OPENAI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -40,11 +40,27 @@ class Settings(BaseSettings):
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L12-v2"   # cross-encoder/ms-marco-MiniLM-L12-v2: 33.4M params
     RERANKER_MODEL_PATH: Path = BASE_DIR / "models" / "cross_encoder" / "ms-marco-MiniLM-L12-v2"
 
-    # Vector DB
-    VECTOR_DB_TYPE: str = "faiss"
-    INDEX_PATH: str = "data/processed/index"
+    # Database/Vector store
+    DB_USER: str
+    DB_PASSWORD: str
+    DB_HOST: str
+    DB_PORT: int
+    DB_NAME: str
 
-    # RAG params
+    @property
+    def POSTGRES_URL(self) -> str:
+        return (
+            f"postgresql://{self.DB_USER}:"
+            f"{self.DB_PASSWORD}@"
+            f"{self.DB_HOST}:"
+            f"{self.DB_PORT}/"
+            f"{self.DB_NAME}"
+        )
+    
+    PGVECTOR_HNSW_M: int = 16
+    PGVECTOR_HNSW_EF_CONSTRUCTION: int = 64
+
+    # RAG
     RETRIEVER_INITIAL_K: int = Field(default=20, ge=1, le=200)
     TOP_K: int = Field(default=5, ge=1, le=50)
 
@@ -61,6 +77,8 @@ class Settings(BaseSettings):
     OVERLAP_TOKENS_PCT: int = Field(default=15, ge=0, lt=100)
     OVERLAP_GRANULARITY: OverlapGranularity = OverlapGranularity.SENTENCE_BASED
     SEPARATE_H2s: bool = True
+    CROSS_SECTION_OVERLAP: bool = False
+    CHUNKS_EMBEDDING_BATCH_SIZE: int = Field(default=32, ge=1)
 
     # Misc
     LOG_LEVEL: LogLevel = LogLevel.INFO # DEBUG < INFO < WARNING < ERROR < CRITICAL

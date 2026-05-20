@@ -1,6 +1,7 @@
 from app.core.utils import find_positions
 
 def prepend_hierarchy(text: str, hierarchy: list[str]):
+        text = text.strip()
         headings_to_prepend = []
         last_h_level = float('inf')
         for heading in reversed(hierarchy):
@@ -16,7 +17,7 @@ def prepend_hierarchy(text: str, hierarchy: list[str]):
                     last_h_level = h_level
         final_text = "\n".join(headings_to_prepend)
         if final_text:
-            final_text += "\n\n" + text.strip()
+            final_text += "\n\n" + text
         else:
-            final_text = text.strip()
+            final_text = text
         return final_text

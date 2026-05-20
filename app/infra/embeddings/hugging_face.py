@@ -22,7 +22,7 @@ class HuggingFaceEmbeddingProvider(BaseEmbeddingProvider):
 
         return embedding
 
-    def embed_documents(self, documents: list[str] | str):
+    def embed_documents(self, documents: list[str] | str) -> list[float] | list[list[float]]:
 
         embeddings = self.client.feature_extraction(
             documents,

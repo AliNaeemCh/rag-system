@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-@dataclass
+@dataclass(slots=True)
 class MetadataRule:
     start: int
     end: int
     metadata: dict
 
 
-@dataclass
+@dataclass(slots=True)
 class PDFIngestionConfig:
     pdf_path: Path
     jsonl_path: Path

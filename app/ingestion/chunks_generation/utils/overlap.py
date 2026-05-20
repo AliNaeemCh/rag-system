@@ -1,5 +1,5 @@
-from app.ingestion.plain_text_to_chunks.config import OverlapGranularity
-from app.ingestion.plain_text_to_chunks.utils.processors import join_texts
+from app.ingestion.chunks_generation.config import OverlapGranularity
+from app.ingestion.chunks_generation.utils.processors import join_texts
 from app.core.tokenizer import tokenizer
 
 
@@ -7,6 +7,7 @@ def generate_overlap_texts(
     sentences: list[str],
     overlap_tokens_count: int,
     granularity: OverlapGranularity,
+    cross_section_overlap: bool,
     hierarchy: list[str] | None = None
 ) -> tuple[list[str], int]:
     overlap_texts = []
@@ -14,7 +15,7 @@ def generate_overlap_texts(
     end = False
     # Start from end of current chunk and work backwards
     for sentence in reversed(sentences):
-        if hierarchy is not None and sentence.strip() in hierarchy:
+        if not cross_section_overlap and hierarchy is not None and sentence.strip() in hierarchy:
             break
         sentence_tokens_count = tokenizer.count_tokens(sentence)
         if tokens_used + sentence_tokens_count <= overlap_tokens_count:
