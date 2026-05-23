@@ -1,9 +1,9 @@
 from tqdm import tqdm
-from app.ingestion.chunks_generation.utils.parsers import iter_sections, extract_last_chunk
+from app.ingestion.chunks_generation.utils.parsers import iter_sections
 from app.ingestion.chunks_generation.chunker import Chunker
 from app.analysis.chunks.generate_chunks_stats import generate_chunks_stats
 from app.ingestion.chunks_generation.config import ChunkingConfig
-from app.core.utils import write_jsonl, reset_jsonl, find_positions
+from app.core.utils import write_jsonl, reset_jsonl, find_positions, extract_last_jsonl_object
 from app.core.tokenizer import tokenizer
 from app.ingestion.chunks_generation.utils.nlp import nlp
 from pathlib import Path
@@ -11,6 +11,7 @@ from app.core.config import settings
 import logging
 from app.core.logger import setup_logging
 import re
+
 setup_logging()
 logger = logging.getLogger("app.ingestion.chunks_generation.run")
 
@@ -21,10 +22,13 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
         sections_sentences = []
         metadata = []
         h_tags = ["<H1>", "<H2>"] if chunking_config.separate_h2s else ["<H1>"]
+        chunks_counter = 0
+
         if chunking_config.resume:
-            last_chunk = extract_last_chunk(jsonl_path=output_path)
+            last_chunk = extract_last_jsonl_object(jsonl_path=output_path)
             if last_chunk:
                 logger.info("Chunking Resumed")
+                chunks_counter = last_chunk.get('chunk_id', 0)
             else:
                 logger.info("Chunking Started")
         else:
@@ -33,15 +37,18 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
             logger.info("Chunking Started")
 
         def chunk_and_save():
+            nonlocal chunks_counter
             chunks, chunks_metadata = chunker.chunk_sections(sections_sentences, metadata=metadata)
-
-            data = [
-                {
-                    "metadata": chunks_metadata[i],
-                    "content": chunk
-                }
-                for i, chunk in enumerate(chunks)
-            ]
+            data = []
+            for i, chunk in enumerate(chunks):
+                chunks_counter += 1
+                data.append(
+                    {
+                        "chunk_id": chunks_counter,
+                        "metadata": chunks_metadata[i],
+                        "content": chunk
+                    }
+                )
             write_jsonl(data, output_path)
 
         for output in iter_sections(input_path, h_tags=h_tags, last_chunk=last_chunk):
@@ -75,9 +82,10 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
         logger.info("Chunking Completed")
 
     except Exception:
-        logger.exception("Chunking Failed!")
+        logger.exception("Chunking Failed! Please resume the process manually.")
+        return
 
-chunking_config = ChunkingConfig(resume=False)  # Default params
+chunking_config = ChunkingConfig(resume=True)  # Default params
 
 chunks_file_name = "sys_annual_2025_chunks.jsonl"
 

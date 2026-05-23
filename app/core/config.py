@@ -19,6 +19,7 @@ class OverlapGranularity(str, Enum):
 
 
 class Settings(BaseSettings):
+
     # LLM
     GEMINI_API_KEY: str
     OPENAI_API_KEY_SHARING: str
@@ -59,6 +60,7 @@ class Settings(BaseSettings):
     
     PGVECTOR_HNSW_M: int = 16
     PGVECTOR_HNSW_EF_CONSTRUCTION: int = 64
+    PGVECTOR_HNSW_EF_SEARCH: int = 40
 
     # RAG
     RETRIEVER_INITIAL_K: int = Field(default=20, ge=1, le=200)
@@ -78,7 +80,7 @@ class Settings(BaseSettings):
     OVERLAP_GRANULARITY: OverlapGranularity = OverlapGranularity.SENTENCE_BASED
     SEPARATE_H2s: bool = True
     CROSS_SECTION_OVERLAP: bool = False
-    CHUNKS_EMBEDDING_BATCH_SIZE: int = Field(default=32, ge=1)
+    CHUNKS_EMBEDDING_BATCH_SIZE: int = Field(default=64, ge=1)
 
     # Misc
     LOG_LEVEL: LogLevel = LogLevel.INFO # DEBUG < INFO < WARNING < ERROR < CRITICAL

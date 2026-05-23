@@ -1,15 +1,10 @@
-import uuid
 import psycopg2
-from psycopg2.extras import execute_values
+from psycopg2.extras import execute_values, Json
 from app.infra.vector_stores.base import VectorStoreBase
-from app.core.config import settings
-
 
 class PgVectorStore(VectorStoreBase):
     """
     PostgreSQL + pgvector (cosine similarity + HNSW index)
-
-    Production-grade assumptions:
     - embeddings stored in Postgres
     - cosine similarity as default metric
     - HNSW index for ANN retrieval
@@ -17,74 +12,94 @@ class PgVectorStore(VectorStoreBase):
 
     def __init__(self, connection_string: str, embedding_dim: int, m: int, ef_construction: int):
         self.conn = psycopg2.connect(connection_string)
-        self.conn.autocommit = True
-        self._ensure_schema(embedding_dim, m, ef_construction)
+        self.embedding_dim = embedding_dim
+        self.m = m
+        self.ef_construction = ef_construction
+        self._ensure_schema()
 
-    def _ensure_schema(self, embedding_dim: int, m: int, ef_construction: int):
-        with self.conn.cursor() as cur:
-            # Enable pgvector extension
-            cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+    def _ensure_schema(self):
+        with self.conn:
+            with self.conn.cursor() as cur:
+                # Enable pgvector extension
+                cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
-            # Main documents table
-            cur.execute(f"""
-                CREATE TABLE IF NOT EXISTS documents (
-                    id UUID PRIMARY KEY,
-                    content TEXT NOT NULL,
-                    embedding VECTOR({embedding_dim}),
-                    metadata JSONB
-                );
-            """)
+                # -------------------------
+                # Documents table
+                # -------------------------
+                cur.execute(f"""
+                    CREATE TABLE IF NOT EXISTS documents (
+                        id BIGSERIAL PRIMARY KEY,
+                        content TEXT NOT NULL,
+                        embedding VECTOR({self.embedding_dim}),
+                        metadata JSONB,
+                        created_at TIMESTAMPTZ DEFAULT NOW()
+                    );
+                """)
 
-            # Production-grade HNSW index for cosine similarity
-            cur.execute(f"""
-                CREATE INDEX IF NOT EXISTS documents_embedding_hnsw
-                ON documents
-                USING hnsw (embedding vector_cosine_ops)
-                WITH (
-                    m = {m},
-                    ef_construction = {ef_construction}
-                );
-            """)
+                # -------------------------
+                # Vector index (HNSW)
+                # -------------------------
+                cur.execute(f"""
+                    CREATE INDEX IF NOT EXISTS documents_embedding_hnsw
+                    ON documents
+                    USING hnsw (embedding vector_cosine_ops)
+                    WITH (
+                        m = {self.m},
+                        ef_construction = {self.ef_construction}
+                    );
+                """)
+
+    def reset_schema(self):
+        with self.conn:
+            with self.conn.cursor() as cur:
+                # 1. Drop everything
+                cur.execute("DROP TABLE IF EXISTS documents;")
+
+        # 2. Recreate using existing logic
+        self._ensure_schema()
 
     def add_documents(
         self,
+        chunk_ids: list[int],
         texts: list[str],
         embeddings: list[list[float]],
-        metadatas: list[dict] | None = None,
+        metadatas: list[dict] | None = None
     ) -> None:
 
         metadatas = metadatas or [{} for _ in texts]
 
         rows = [
             (
-                str(uuid.uuid4()),
+                id,
                 text,
                 embedding,
-                metadata,
+                Json(metadata),
             )
-            for text, embedding, metadata in zip(texts, embeddings, metadatas)
+            for id, text, embedding, metadata in zip(chunk_ids, texts, embeddings, metadatas)
         ]
 
-        with self.conn.cursor() as cur:
-            execute_values(
-                cur,
-                """
-                INSERT INTO documents (id, content, embedding, metadata)
-                VALUES %s
-                """,
-                rows,
-            )
+        with self.conn:
+            with self.conn.cursor() as cur:
+                execute_values(
+                    cur,
+                    """
+                    INSERT INTO documents (id, content, embedding, metadata)
+                    VALUES %s
+                    """,
+                    rows,
+                )
 
     def similarity_search(
         self,
         query_embedding: list[float],
         top_k: int,
+        ef_search: int,
         filters: dict | None = None,
     ) -> list[dict]:
-
+        
         sql = """
             SELECT id, content, metadata,
-                   embedding <=> %s AS distance
+                   embedding <=> %s::vector AS distance
             FROM documents
         """
 
@@ -100,15 +115,17 @@ class PgVectorStore(VectorStoreBase):
             sql += " WHERE " + " AND ".join(conditions)
 
         sql += """
-            ORDER BY embedding <=> %s
+            ORDER BY embedding <=> %s::vector
             LIMIT %s
         """
 
         params.extend([query_embedding, top_k])
 
-        with self.conn.cursor() as cur:
-            cur.execute(sql, params)
-            rows = cur.fetchall()
+        with self.conn:
+            with self.conn.cursor() as cur:
+                cur.execute(f"SET LOCAL hnsw.ef_search = {ef_search}")
+                cur.execute(sql, params)
+                rows = cur.fetchall()
 
         return [
             {
@@ -120,13 +137,26 @@ class PgVectorStore(VectorStoreBase):
             for r in rows
         ]
 
-    def delete(self, ids: list[str]) -> None:
+    def delete(self, ids: int | list[int]) -> None:
+        if isinstance(ids, int):
+            ids = [ids]
+
+        with self.conn:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM documents WHERE id = ANY(%s)",
+                    (ids,),
+                )
+
+    def get_max_id(self):
         with self.conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM documents WHERE id = ANY(%s)",
-                (ids,),
-            )
-    
-    def close(self):
+            cur.execute(f'''
+                SELECT COALESCE(MAX(id), 0)
+                FROM documents;
+            ''')
+            result = cur.fetchone()[0]
+        return result
+        
+    def close_conn(self):
         if self.conn:
             self.conn.close()

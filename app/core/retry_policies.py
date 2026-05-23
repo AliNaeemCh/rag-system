@@ -8,6 +8,9 @@ from tenacity import (
     before_sleep_log,
 )
 from openai import RateLimitError, APIError, APITimeoutError
+from huggingface_hub.errors import HfHubHTTPError
+import requests
+from typing import Type
 
 
 # ---------------- CONFIG ----------------
@@ -20,27 +23,41 @@ class RetryConfig:
 
 # ----------------------------------------
 
-def openai_retry(
+def build_retry(
     logger: logging.Logger,
-    config: RetryConfig | None = None
+    retry_exceptions: Type[BaseException] | tuple[Type[BaseException], ...],
+    config:  RetryConfig | None = None
 ):
     if config is None:
         config = RetryConfig()
-
+        
     return retry(
         stop=stop_after_attempt(config.max_attempts),
-
         wait=wait_exponential_jitter(
             initial=config.initial_wait,
             max=config.max_wait,
-            jitter=config.jitter
+            jitter=config.jitter,
         ),
-
-        retry=retry_if_exception_type(
-            (RateLimitError, APIError, APITimeoutError)
-        ),
-
+        retry=retry_if_exception_type(retry_exceptions),
         reraise=True,
-
         before_sleep=before_sleep_log(logger, logging.WARNING),
+    )
+
+def openai_retry(logger: logging.Logger, config: RetryConfig | None =None):
+    return build_retry(
+        logger,
+        retry_exceptions=(RateLimitError, APIError, APITimeoutError),
+        config=config,
+    )
+
+
+def huggingface_retry(logger: logging.Logger, config: RetryConfig | None = None):
+    return build_retry(
+        logger,
+        retry_exceptions=(
+            HfHubHTTPError,
+            TimeoutError,
+            requests.exceptions.RequestException,
+        ),
+        config=config
     )

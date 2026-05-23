@@ -32,4 +32,4 @@ def build_pipeline():
 setup_logging()
 
 # set log level from environment
-# logging.getLogger().setLevel(settings.LOG_LEVEL.value)
+logging.getLogger().setLevel(settings.LOG_LEVEL.value)

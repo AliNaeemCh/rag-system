@@ -67,3 +67,8 @@ def setup_logging(
 
     root.addHandler(console)
     root.addHandler(file_handler)
+
+    # Silence noisy libraries
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("huggingface_hub").setLevel(logging.WARNING)
