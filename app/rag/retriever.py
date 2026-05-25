@@ -1,5 +1,5 @@
 import logging
-from app.infra.vector_stores.pgvector_store import PgVectorStore
+from app.infra.vector_stores.pgvector_store.store import PgVectorStore
 from app.infra.embeddings.hugging_face import HuggingFaceEmbeddingProvider
 from app.core.config import settings
 
@@ -7,9 +7,10 @@ logger = logging.getLogger("rag.retriever")
 
 
 class Retriever:
-    def __init__(self, embedding_model: HuggingFaceEmbeddingProvider, vector_store: PgVectorStore, top_k: int):
+    def __init__(self, embedding_model: HuggingFaceEmbeddingProvider, vector_store: PgVectorStore, retrieval_instruction: str, top_k: int):
         self.embedding_model = embedding_model
         self.vector_store = vector_store
+        self.retrieval_instruction = retrieval_instruction
         self.top_k = top_k
 
     def retrieve(self, query: str, filters: dict | None = None, normalize_query: bool = True, ef_search: int | None = None):
@@ -20,12 +21,10 @@ class Retriever:
         """
         ef_search = ef_search or settings.PGVECTOR_HNSW_EF_SEARCH
 
-        logger.debug(f"Retrieval started | Query = {query}")
+        logger.info(f"Retrieval started")
 
         # 1. Get embedding
-        query_embedding = self.embedding_model.embed_query(query, normalize=normalize_query)
-
-        logger.debug(f"Query embedded | Embedding = {query_embedding}")
+        query_embedding = self.embedding_model.embed_query(query, normalize=normalize_query, retrieval_instruction=self.retrieval_instruction)
 
         # 2. Search vector store
         docs = self.vector_store.similarity_search(
@@ -35,7 +34,6 @@ class Retriever:
             ef_search=ef_search
         )
 
-        logger.info(f"Document retrieval completed | Count = {len(docs)}")
-        logger.debug(f"Retrieved docs: {docs}")
+        logger.info(f"Retrieval completed")
 
         return docs

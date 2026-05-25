@@ -20,6 +20,13 @@ class OverlapGranularity(str, Enum):
 
 class Settings(BaseSettings):
 
+    # APIs
+    TITLE: str = "Systems Limited AI Assistant"
+    BACKEND_BASE_URL: str
+
+    @property
+    def CHAT_URL(self) -> str:
+        return self.BACKEND_BASE_URL + "/api/v1/chat"
     # LLM
     GEMINI_API_KEY: str
     OPENAI_API_KEY_SHARING: str
@@ -36,6 +43,9 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "BAAI/bge-large-en-v1.5"
     RETRIEVAL_INSTRUCTION: str = "Represent this sentence for searching relevant passages:"
     EMBEDDING_DIMENSIONS: int = 1024
+
+    # Message rewriter
+    REWRITER_KW_EXCLUDE_LIST: list[str] = ["Systems Limited", "Systems Ltd."]
 
     # Reranker
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L12-v2"   # cross-encoder/ms-marco-MiniLM-L12-v2: 33.4M params

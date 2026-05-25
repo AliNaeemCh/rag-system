@@ -10,15 +10,26 @@ class MessageRewriter:
     def __init__(self, llm: OpenAIEngine):
         self.llm = llm
 
-    def rewrite(self, message: str, chat_history: list = []) -> str:
+    def rewrite(self, message: str, chat_history: list = [], keyword_exclusion_list: list[str] = []) -> str:
         """
         Rewrite user query into retrieval-optimized query.
         """
+        logger.info("Message rewriting started")
 
         # 1. Build user prompt
         user_prompt = build_rewriter_user_prompt(message, chat_history)
 
         # 2. Call LLM
-        rewritten_message, keywords = self.llm.generate(user_prompt=user_prompt, system_prompt=REWRITER_SYSTEM_PROMPT, temperature=0, schema=REWRITER_SCHEMA)
+        response = self.llm.generate(user_prompt=user_prompt, system_prompt=REWRITER_SYSTEM_PROMPT, temperature=0, schema=REWRITER_SCHEMA)
+        
+        # 3. Extract required fields
+        rewritten_message = response["rewritten_message"]
+        rewritten_message_lower = response["rewritten_message"].lower()
+        keywords = response["keywords"]
+        exclusion_set = {kw.lower() for kw in keyword_exclusion_list}
+        keywords = [kw for kw in keywords if (kw_lower := kw.lower()) not in exclusion_set and kw_lower not in rewritten_message_lower]
+        keywords_str = ", ".join(keywords)
 
-        return rewritten_message, keywords
+        logger.info("Message rewriting completed")
+
+        return rewritten_message, keywords_str

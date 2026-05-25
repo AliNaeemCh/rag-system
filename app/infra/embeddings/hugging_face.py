@@ -13,6 +13,7 @@ class HuggingFaceEmbeddingProvider(BaseEmbeddingProvider):
 
     @huggingface_retry(logger)
     def embed_query(self, query: str, retrieval_instruction: str = '', normalize: bool = True):
+        logger.info(f"Query embedding started")
 
         embedding = self.client.feature_extraction(
             retrieval_instruction + query,
@@ -22,7 +23,7 @@ class HuggingFaceEmbeddingProvider(BaseEmbeddingProvider):
         if normalize:
             embedding = self._normalize_embeddings(embedding)
 
-        logger.debug("Query embedded")
+        logger.info(f"Query embedding completed")
 
         return embedding
     

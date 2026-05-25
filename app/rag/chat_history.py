@@ -1,6 +1,5 @@
 import time
 import logging
-from typing import List
 
 from app.core.config import settings
 
@@ -34,7 +33,7 @@ class ChatHistory:
 
         logger.debug(f"Session {session_id}: added {role} message")
 
-    def get_recent(self, session_id: str, k: int = settings.CHAT_HISTORY_MAX_PAIRS) -> List[dict]:
+    def get_recent(self, session_id: str, k: int = settings.CHAT_HISTORY_MAX_PAIRS) -> list[dict]:
         session = self.store.get(session_id)
 
         if not session:

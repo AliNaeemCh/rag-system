@@ -11,6 +11,8 @@ from openai import RateLimitError, APIError, APITimeoutError
 from huggingface_hub.errors import HfHubHTTPError
 import requests
 from typing import Type
+import httpx
+import httpcore
 
 
 # ---------------- CONFIG ----------------
@@ -58,6 +60,8 @@ def huggingface_retry(logger: logging.Logger, config: RetryConfig | None = None)
             HfHubHTTPError,
             TimeoutError,
             requests.exceptions.RequestException,
+            httpx.ConnectError,
+            httpcore.ConnectError,
         ),
         config=config
     )

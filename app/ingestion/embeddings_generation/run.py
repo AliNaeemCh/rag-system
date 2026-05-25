@@ -9,7 +9,7 @@ from app.core.utils import load_jsonl
 from app.core.config import settings
 from app.infra.dependencies import hf_inference_client
 from app.infra.embeddings.hugging_face import HuggingFaceEmbeddingProvider
-from app.infra.vector_stores.pgvector_store import PgVectorStore
+from app.infra.vector_stores.pgvector_store.store import PgVectorStore
 from app.ingestion.embeddings_generation.config import EmbeddingPipelineConfig
 import math
 

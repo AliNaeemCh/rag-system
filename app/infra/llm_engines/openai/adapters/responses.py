@@ -1,12 +1,13 @@
 from app.infra.llm_engines.openai.adapters.base import OpenAIBaseAdapter
 import logging
 from app.core.retry_policies import openai_retry
+from openai import OpenAI
 
 logger = logging.getLogger("app.infra.llms_engines.openai.adapters.responses")
 
 class OpenAIResponsesAdapter(OpenAIBaseAdapter):
 
-    def __init__(self, client, model):
+    def __init__(self, client: OpenAI, model: str):
         self.client = client
         self.model = model
 
@@ -57,12 +58,12 @@ class OpenAIResponsesAdapter(OpenAIBaseAdapter):
     @openai_retry(logger)
     def stream(self, request):
         payload = self.build_payload(request)
-        response = self.client.responses.stream(payload)
+        response = self.client.responses.stream(**payload)
 
         def gen():
-            with response.stream() as s:
+            with response as s:
                 for event in s:
-                    if event.type == "response.output_text.delta":
+                    if event.type == "response.output_text.delta" and event.delta:
                         yield event.delta
 
         return gen()

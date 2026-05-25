@@ -1,6 +1,10 @@
 import psycopg2
 from psycopg2.extras import execute_values, Json
 from app.infra.vector_stores.base import VectorStoreBase
+from app.infra.vector_stores.pgvector_store.config import RetrievedDocument
+import logging
+
+logger = logging.getLogger("app.infra.vector_stores.pg_vector_store.store")
 
 class PgVectorStore(VectorStoreBase):
     """
@@ -95,8 +99,10 @@ class PgVectorStore(VectorStoreBase):
         top_k: int,
         ef_search: int,
         filters: dict | None = None,
-    ) -> list[dict]:
+    ) -> list[RetrievedDocument]:
         
+        logger.info("Similarity search started")
+
         sql = """
             SELECT id, content, metadata,
                    embedding <=> %s::vector AS distance
@@ -126,14 +132,16 @@ class PgVectorStore(VectorStoreBase):
                 cur.execute(f"SET LOCAL hnsw.ef_search = {ef_search}")
                 cur.execute(sql, params)
                 rows = cur.fetchall()
+        
+        logger.info("Similarity search completed")
 
         return [
-            {
+            RetrievedDocument(**{
                 "id": r[0],
                 "content": r[1],
                 "metadata": r[2],
                 "distance": r[3],
-            }
+            })
             for r in rows
         ]
 

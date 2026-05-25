@@ -19,8 +19,11 @@ REWRITER_SCHEMA = {
             "description": "Self-contained rewritten version of the user message"
         },
         "keywords": {
-            "type": "string",
-            "description": "3–8 keywords representing main topics (comma-separated)"
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "3–8 keywords representing main topics"
         }
     },
     "required": ["rewritten_message", "keywords"],
