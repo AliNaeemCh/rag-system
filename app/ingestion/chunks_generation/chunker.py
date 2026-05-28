@@ -23,7 +23,7 @@ class Chunker:
     def chunk_sections(self, sections_sentences: list[list[str]], metadata: list[dict] | None = None) -> list[str]:
         """
         CHUNKING METHODOLOGY:
-        * Each chunk generally stays within the defined `chunk_size` token limit, with minor deviations occurring occasionally.
+        * Each chunk always stays within the defined `chunk_size` token limit.
         * It is ensured that no chunk ends mid-sentence.
         * No two H1-level sections are merged into one chunk.
         * H2-level sections are also kept separate by default unless their size is too small in which case they are merged upto 50% of effective chunk size (`chunk_size-overlap_tokens_count`).
@@ -40,10 +40,11 @@ class Chunker:
             * If the last sentence of the previous chunk is longer than `chunk_overlap_tokens`,
                 it is still carried over to the next chunk, even if this exceeds the overlap limit, as long as it fits within the chunk with room for at least one more sentence.
         """
-
+        counter = 0
         def finalize_chunk():
             final_text = join_texts(current_sentences)
             final_chunk = prepend_hierarchy(final_text, hierarchy)
+            # print('FINALIZED CHUNK IS: ', final_chunk)
             chunks.append(final_chunk)
             # Metadata
             final_chunk_tokens = self.tokenizer.count_tokens(final_chunk)
@@ -103,7 +104,6 @@ class Chunker:
             if "<H1>" in sections_sentences[j][0]:
                 hierarchy = []
             current_sentences = []
-            current_tokens = 0
             total_overlap_tokens = 0
             i = 0
             while i < len(sections_sentences[j]):
@@ -115,22 +115,46 @@ class Chunker:
                     all_sentences_counter += 1
                     continue
                 h_tag_pos = find_positions(text=sentence, pattern=re.compile(r"<H\d+>"), find_first=True)
+                hierarchy_for_extended_text = hierarchy
                 if h_tag_pos is not None:
                     sentence = replace_regex_pattern(text=sentence, pattern=re.compile(r"<H(\d+)>"), replacement=r"H\1:")   # <Hx> -> Hx:
+                    sentence_h_tag_level = int(sentence.split(":")[0][1:])
+                    h_idx = len(hierarchy) - 1
+                    if h_idx >= 0:
+                        while h_idx >= 0:
+                            h_level = int(hierarchy[h_idx].split(":")[0][1:])
+                            if h_level != sentence_h_tag_level:
+                                break
+                            h_idx -= 1
+                        hierarchy_for_extended_text = hierarchy[:h_idx + 1]
+                        if h_idx < len(hierarchy) - 1:
+                            # print('HIERARCHY MUTATED')
+                            # print('CURRENT SENTENCE: ', sentence)
+                            # print('ORIGINAL HIERARCHY', hierarchy)
+                            # print('MOD HIERARCHY', hierarchy_for_extended_text)
+                            pass
                 sentence_token_count = self.tokenizer.count_tokens(sentence)
+                extended_text = prepend_hierarchy(text=join_texts(current_sentences + [sentence]), hierarchy=hierarchy_for_extended_text)
+                extended_text_token_count = self.tokenizer.count_tokens(extended_text)
+                # if counter > 100:
+                #     return
+                # print('CURRENT SENTENCES IS: ', current_sentences)
+                # print('extended_text IS: ', extended_text)
+                # print("TOKEN COUNT:", extended_text_token_count)
                 # If sentence fits in current chunk
                 # OR EDGE CASE: if the sentence is too long to fit in our chunk, we make exception and exceed the chunk size to fit this sentence
-                if current_tokens + sentence_token_count <= self.config.chunk_size or sentence_token_count + overlap_tokens_count > self.config.chunk_size:
+                if extended_text_token_count <= self.config.chunk_size or sentence_token_count + overlap_tokens_count > self.config.chunk_size:
+                    # print('ENTERED APPENDING')
                     if sentence_token_count + overlap_tokens_count > self.config.chunk_size:
                         total_long_sentences += 1
                     if h_tag_pos is not None:
                         hierarchy.append(sentence.strip())
                     current_sentences.append(sentence)
-                    current_tokens += sentence_token_count
                     i += 1
                     all_sentences_counter += 1
 
                 else:
+                    # print('ENTERED FINALIZE CHUNK')
                     # Check if last sentence is of a subsection title
                     k = 1
                     while not current_sentences[-k].strip():
@@ -152,7 +176,7 @@ class Chunker:
                         new_section_starts = find_positions(sections_sentences[j][i-k], pattern=re.compile(r"<H\d+>"), find_first=True) is not None
                         if not new_section_starts or self.config.cross_section_overlap:
                             current_sentences_copy = current_sentences
-                            current_sentences, current_tokens = generate_overlap_texts(current_sentences_copy, overlap_tokens_count, granularity=self.config.overlap_granularity,
+                            current_sentences, _ = generate_overlap_texts(current_sentences_copy, overlap_tokens_count, granularity=self.config.overlap_granularity,
                                                                                        cross_section_overlap=self.config.cross_section_overlap, hierarchy=hierarchy)
                             stripped_overlap_tokens = sum([self.tokenizer.count_tokens(s.strip()) for s in current_sentences])
                             if stripped_overlap_tokens == 0:
@@ -175,14 +199,14 @@ class Chunker:
                                     t += 1
                                 if last_sentence_tokens + next_sentence_tokens <= self.config.chunk_size:
                                     current_sentences = current_sentences_copy[-k:]
-                                    current_tokens = last_sentence_tokens
                                 else:
-                                    current_sentences, current_tokens = [], 0
+                                    current_sentences = []
                         else:
-                            current_sentences, current_tokens = [], 0
+                            current_sentences = []
                         total_overlap_tokens = self.tokenizer.count_tokens(join_texts(current_sentences))
                     else:
-                        current_sentences, current_tokens, total_overlap_tokens = [], 0, 0
+                        current_sentences, total_overlap_tokens = [], 0
+                counter += 1
             # Add final chunk
             if current_sentences:
                 finalize_chunk()

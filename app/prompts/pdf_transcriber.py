@@ -28,13 +28,13 @@ PDF_TRANSCRIBER_SYSTEM_PROMPT = """Instructions for extracting text from the ima
 
    * **H1 constraint:**
 
-      * `<H1>\n\n` is only used when a new or distinct top-level topic begins.
+      * `<H1> Title\n\n` is only used when a new or distinct top-level topic begins.
 
    * **Level cues (supporting rule):**
 
       * Use numbering, visual prominence, and semantic meaning as hints when mapping hierarchy (e.g., 1 → H1, 1.1 → H2, 1.1.1 → H3), but never override the original structure.
 
-   * Every heading must include a title after the tag (`<Hx> Title\n\n`).
+   * Every heading must include a title after the h tag and be followed by two newline characters (`<Hx> Title\n\n`).
 
    * If content begins without an explicit heading but introduces a new topic, generate a concise heading for it.
 

@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "BAAI/bge-large-en-v1.5"
     LOCAL_EMBEDDING_MODEL_PATH: Path = BASE_DIR / "models" / "embedding" / "bge-large-en-v1.5"
     RETRIEVAL_INSTRUCTION: str = "Represent this sentence for searching relevant passages:"
+    # RETRIEVAL_INSTRUCTION: str = ""
     EMBEDDING_DIMENSIONS: int = 1024
 
     # Message rewriter
@@ -86,7 +87,7 @@ class Settings(BaseSettings):
     PROCESSED_DATA_DIR: Path = BASE_DIR / "data" / "processed"
 
     # Ingestion
-    CHUNK_SIZE: int = Field(default=400, gt=0)
+    CHUNK_SIZE: int = Field(default=350, gt=0)
     OVERLAP_TOKENS_PCT: int = Field(default=15, ge=0, lt=100)
     OVERLAP_GRANULARITY: OverlapGranularity = OverlapGranularity.SENTENCE_BASED
     SEPARATE_H2s: bool = True

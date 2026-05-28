@@ -85,7 +85,7 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
         logger.exception("Chunking Failed! Please resume the process manually.")
         return
 
-chunking_config = ChunkingConfig(resume=True)  # Default params
+chunking_config = ChunkingConfig(resume=False)  # Default params
 
 chunks_file_name = "sys_annual_2025_chunks.jsonl"
 
