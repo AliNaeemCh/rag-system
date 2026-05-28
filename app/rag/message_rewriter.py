@@ -1,5 +1,4 @@
 import logging
-from app.prompts.rag import REWRITER_SYSTEM_PROMPT, REWRITER_SCHEMA
 from app.prompts.prompt_utils import build_rewriter_user_prompt
 from app.infra.llm_engines.openai.engine import OpenAIEngine
 
@@ -7,10 +6,12 @@ logger = logging.getLogger("app.rag.rewriter")
 
 
 class MessageRewriter:
-    def __init__(self, llm: OpenAIEngine):
+    def __init__(self, llm: OpenAIEngine, system_prompt: str, output_schema: dict):
         self.llm = llm
+        self.system_prompt = system_prompt
+        self.output_schema = output_schema
 
-    def rewrite(self, message: str, chat_history: list = [], keyword_exclusion_list: list[str] = []) -> str:
+    def rewrite(self, message: str, chat_history: list = [], keyword_exclusion_list: list[str] = [], temperature: float = 0) -> str:
         """
         Rewrite user query into retrieval-optimized query.
         """
@@ -20,8 +21,8 @@ class MessageRewriter:
         user_prompt = build_rewriter_user_prompt(message, chat_history)
 
         # 2. Call LLM
-        response = self.llm.generate(user_prompt=user_prompt, system_prompt=REWRITER_SYSTEM_PROMPT, temperature=0, schema=REWRITER_SCHEMA)
-        
+        response = self.llm.generate(user_prompt=user_prompt, system_prompt=self.system_prompt, temperature=temperature, schema=self.output_schema)
+
         # 3. Extract required fields
         rewritten_message = response["rewritten_message"]
         rewritten_message_lower = response["rewritten_message"].lower()

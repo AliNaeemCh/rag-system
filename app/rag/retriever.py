@@ -1,13 +1,13 @@
 import logging
 from app.infra.vector_stores.pgvector_store.store import PgVectorStore
-from app.infra.embeddings.hugging_face import HuggingFaceEmbeddingProvider
+from app.infra.embeddings.base import BaseEmbeddingProvider
 from app.core.config import settings
 
 logger = logging.getLogger("rag.retriever")
 
 
 class Retriever:
-    def __init__(self, embedding_model: HuggingFaceEmbeddingProvider, vector_store: PgVectorStore, retrieval_instruction: str, top_k: int):
+    def __init__(self, embedding_model: BaseEmbeddingProvider, vector_store: PgVectorStore, retrieval_instruction: str, top_k: int):
         self.embedding_model = embedding_model
         self.vector_store = vector_store
         self.retrieval_instruction = retrieval_instruction

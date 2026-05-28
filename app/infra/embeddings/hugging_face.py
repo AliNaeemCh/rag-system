@@ -28,7 +28,7 @@ class HuggingFaceEmbeddingProvider(BaseEmbeddingProvider):
         return embedding
     
     @huggingface_retry(logger)
-    def embed_documents(self, documents: list[str] | str, normalize: bool = True) -> list[float] | list[list[float]]:
+    def embed_documents(self, documents: list[str] | str, batch_size: int | None = None, normalize: bool = True) -> list[float] | list[list[float]]:
 
         embeddings = self.client.feature_extraction(
             documents,

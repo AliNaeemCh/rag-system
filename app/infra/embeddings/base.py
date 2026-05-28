@@ -8,7 +8,7 @@ class BaseEmbeddingProvider(ABC):
         pass
 
     @abstractmethod
-    def embed_documents(self, documents: list[str] | str, normalize: bool = True):
+    def embed_documents(self, documents: list[str] | str, batch_size: int | None = None, normalize: bool = True):
         pass
 
     def _normalize_embeddings(self, embeddings: list[float] | list[list[float]]) -> list[float] | list[list[float]]:

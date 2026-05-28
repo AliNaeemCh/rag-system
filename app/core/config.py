@@ -41,6 +41,7 @@ class Settings(BaseSettings):
 
     # Embeddings
     EMBEDDING_MODEL: str = "BAAI/bge-large-en-v1.5"
+    LOCAL_EMBEDDING_MODEL_PATH: Path = BASE_DIR / "models" / "embedding" / "bge-large-en-v1.5"
     RETRIEVAL_INSTRUCTION: str = "Represent this sentence for searching relevant passages:"
     EMBEDDING_DIMENSIONS: int = 1024
 

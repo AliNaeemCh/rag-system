@@ -10,8 +10,9 @@ from app.rag.reranker import Reranker
 from app.rag.generator import Generator
 from app.rag.pipeline import RAGPipeline
 from app.infra.llm_engines.openai.engine import OpenAIEngine
+from app.infra.embeddings.sentence_transformer import SentenceTransformerEmbeddingProvider
 from app.infra.embeddings.hugging_face import HuggingFaceEmbeddingProvider
-from app.prompts.rag import GENERATOR_SYSTEM_PROMPT
+from app.prompts.rag import GENERATOR_SYSTEM_PROMPT, REWRITER_SYSTEM_PROMPT, REWRITER_SCHEMA
 from app.rag.chat_history import ChatHistory
 
 logger = logging.getLogger("app.infra.dependencies")
@@ -32,8 +33,7 @@ openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY_SHARING)
 logger.info("Loading Gemini OpenAI client")
 gemini_openai_client = create_openai_client(api_key=settings.GEMINI_API_KEY, base_url=settings.GEMINI_OPENAI_BASE_URL)
 
-logger.info("Loading HF inference client")
-hf_inference_client = create_hf_inference_client(hf_token=settings.HF_TOKEN)
+hf_client = create_hf_inference_client(settings.HF_TOKEN)
 
 # ML models
 logger.info("Loading reranker model")
@@ -48,11 +48,12 @@ vector_store = create_vector_store(connection_string=settings.POSTGRES_URL, embe
 logger.info("Loading RAG pipeline")
 llm_generator = OpenAIEngine(openai_client, settings.GENERATOR_MODEL)
 llm_rewriter = OpenAIEngine(openai_client, settings.REWRITER_MODEL)
-embedding_model = HuggingFaceEmbeddingProvider(client=hf_inference_client, model=settings.EMBEDDING_MODEL)
+# embedding_model = SentenceTransformerEmbeddingProvider(model_path=settings.LOCAL_EMBEDDING_MODEL_PATH)
+embedding_model = HuggingFaceEmbeddingProvider(client=hf_client, model=settings.EMBEDDING_MODEL)
 chat_history = ChatHistory()
 
 def build_rag_pipeline():
-    rewriter = MessageRewriter(llm_rewriter)
+    rewriter = MessageRewriter(llm=llm_rewriter, system_prompt=REWRITER_SYSTEM_PROMPT, output_schema=REWRITER_SCHEMA)
     retriever = Retriever(embedding_model=embedding_model, vector_store=vector_store,
                           top_k=settings.RETRIEVER_INITIAL_K, retrieval_instruction=settings.RETRIEVAL_INSTRUCTION)
     reranker = Reranker(reranker_model=reranker_model, top_k=settings.TOP_K)

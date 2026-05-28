@@ -14,8 +14,40 @@ sys.path.append(str(ROOT))
 from app.core.config import settings
 
 st.set_page_config(page_title=settings.TITLE, layout="centered")
+
+st.markdown("""
+<style>
+[data-testid="stSidebar"] {
+    width: 190px !important;
+    min-width: 190px !important;
+}
+
+[data-testid="stSidebar"] > div:first-child {
+    padding-top: 0.8rem;
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+}
+
+[data-testid="stRadio"] label {
+    font-size: 13px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.title(settings.TITLE)
 
+with st.sidebar:
+    st.markdown("### ⚙️ Response Mode")
+
+    mode = st.radio(
+        "Response Mode",
+        ["⚡ Fast", "⚖️ Balanced", "🧠 Advanced"],
+        index=1,
+        label_visibility="collapsed"
+    )
+
+    mode = mode.split(" ", 1)[1].lower()
+    
 # ----------------------------
 # session state
 # ----------------------------
@@ -40,32 +72,48 @@ user_input = st.chat_input("Ask something...")
 # ----------------------------
 # CSS typing animation (WhatsApp style)
 # ----------------------------
-TYPING_HTML = """
-<div style="display:flex; gap:5px; align-items:center;">
-  <div class="dot"></div>
-  <div class="dot"></div>
-  <div class="dot"></div>
+TYPING_HTML = """<div class="typing">
+  <span></span>
+  <span></span>
+  <span></span>
 </div>
 
 <style>
-.dot {
+.typing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.typing span {
   width: 7px;
   height: 7px;
-  background-color: #999;
   border-radius: 50%;
-  display: inline-block;
-  animation: bounce 1.2s infinite ease-in-out;
+  background: #999;
+
+  animation: typing 1.6s infinite ease-in-out;
 }
 
-.dot:nth-child(2) { animation-delay: 0.2s; }
-.dot:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
-  40% { transform: scale(1); opacity: 1; }
+.typing span:nth-child(2) {
+  animation-delay: 0.2s;
 }
-</style>
-"""
+
+.typing span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+</style>"""
 
 if user_input:
 
@@ -86,7 +134,8 @@ if user_input:
 
     payload = {
         "message": user_input,
-        "session_id": st.session_state.session_id
+        "session_id": st.session_state.session_id,
+        "mode": mode
     }
 
     try:
@@ -122,11 +171,15 @@ if user_input:
                     elif event_type == "done":
                         break
 
+                    elif event_type == "error":
+                        raise
+
         # final render (remove cursor)
         placeholder.markdown(full_response)
 
-    except Exception as e:
-        placeholder.markdown(f"Error: {str(e)}")
+    except Exception:
+        full_response = "⚠️ Sorry, I couldn’t generate a response right now. Please try again."
+        placeholder.markdown(full_response)
 
     # save history
     st.session_state.messages.append(

@@ -7,6 +7,7 @@ import uuid
 import logging
 import json
 from fastapi.responses import StreamingResponse
+from app.rag.config import ResponseMode
 
 logger = logging.getLogger("app.api.routes.chat")
 
@@ -16,6 +17,7 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     message: str
+    mode: str
     session_id: Optional[str] = Field(default=None)
 
 class ChatResponse(BaseModel):
@@ -33,34 +35,48 @@ async def chat_endpoint(
 
     def event_stream():
 
-        # session start event
-        yield f"data: {json.dumps({
-            'type': 'session',
-            'session_id': session_id
-        })}\n\n"
-
-        stream = pipeline.run(
-            user_message=request.message,
-            session_id=session_id,
-            stream=True
-        )
-
-        full_response = ""
-
-        for chunk in stream:
-            full_response += chunk
-
+        try:
+            # session start event
             yield f"data: {json.dumps({
-                'type': 'token',
-                'token': chunk,
+                'type': 'session',
                 'session_id': session_id
             })}\n\n"
 
-        # done event
-        yield f"data: {json.dumps({
-            'type': 'done',
-            'session_id': session_id
-        })}\n\n"
+            stream = pipeline.run(
+                user_message=request.message,
+                session_id=session_id,
+                stream=True,
+                response_mode=ResponseMode(request.mode)
+            )
+
+            full_response = ""
+
+            for chunk in stream:
+                full_response += chunk
+
+                yield f"data: {json.dumps({
+                    'type': 'token',
+                    'token': chunk,
+                    'session_id': session_id
+                })}\n\n"
+
+            # done event
+            yield f"data: {json.dumps({
+                'type': 'done',
+                'session_id': session_id
+            })}\n\n"
+
+        except Exception as e:
+            logger.exception("Error in chat endpoint")
+
+            yield f"data: {json.dumps({
+                'type': 'error',
+                'message': "Something went wrong",
+                'detail': str(e),
+                'session_id': session_id
+            })}\n\n"
+
+            return
 
     return StreamingResponse(
         event_stream(),
