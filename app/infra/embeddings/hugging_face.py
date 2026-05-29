@@ -2,6 +2,7 @@ import logging
 from huggingface_hub import InferenceClient
 from app.infra.embeddings.base import BaseEmbeddingProvider
 from app.core.retry_policies import huggingface_retry
+from app.core.config import settings
 
 logger = logging.getLogger("app.infra.embeddings.hugging_face")
 
@@ -12,8 +13,10 @@ class HuggingFaceEmbeddingProvider(BaseEmbeddingProvider):
         self.model = model
 
     @huggingface_retry(logger)
-    def embed_query(self, query: str, retrieval_instruction: str = '', normalize: bool = True):
+    def embed_query(self, query: str, retrieval_instruction: str | None = None, normalize: bool = True):
         logger.info(f"Query embedding started")
+
+        retrieval_instruction = retrieval_instruction or settings.RETRIEVAL_INSTRUCTION
 
         embedding = self.client.feature_extraction(
             retrieval_instruction + query,

@@ -22,7 +22,7 @@ class SentenceTransformerEmbeddingProvider(BaseEmbeddingProvider):
     def embed_query(
         self,
         query: str,
-        retrieval_instruction: str = "",
+        retrieval_instruction: str | None = None,
         normalize: bool = True
     ):
         """
@@ -30,8 +30,8 @@ class SentenceTransformerEmbeddingProvider(BaseEmbeddingProvider):
         """
         logger.info(f"Query embedding started")
         
-        emb = self.model.encode(
-            retrieval_instruction + query,
+        emb = self.model.encode_query(
+            query,
             normalize_embeddings=normalize,
             convert_to_numpy=True,
             show_progress_bar=False
@@ -55,7 +55,7 @@ class SentenceTransformerEmbeddingProvider(BaseEmbeddingProvider):
         if isinstance(documents, str):
             documents = [documents]
 
-        embeddings = self.model.encode(
+        embeddings = self.model.encode_document(
             documents,
             normalize_embeddings=normalize,
             convert_to_numpy=True,

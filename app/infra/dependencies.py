@@ -11,7 +11,6 @@ from app.rag.generator import Generator
 from app.rag.pipeline import RAGPipeline
 from app.infra.llm_engines.openai.engine import OpenAIEngine
 from app.infra.embeddings.sentence_transformer import SentenceTransformerEmbeddingProvider
-from app.infra.embeddings.hugging_face import HuggingFaceEmbeddingProvider
 from app.prompts.rag import GENERATOR_SYSTEM_PROMPT, REWRITER_SYSTEM_PROMPT, REWRITER_SCHEMA
 from app.rag.chat_history import ChatHistory
 
@@ -33,8 +32,6 @@ openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY_SHARING)
 logger.info("Loading Gemini OpenAI client")
 gemini_openai_client = create_openai_client(api_key=settings.GEMINI_API_KEY, base_url=settings.GEMINI_OPENAI_BASE_URL)
 
-hf_client = create_hf_inference_client(settings.HF_TOKEN)
-
 # ML models
 logger.info("Loading reranker model")
 reranker_model = CrossEncoder(settings.RERANKER_MODEL_PATH)
@@ -48,8 +45,7 @@ vector_store = create_vector_store(connection_string=settings.POSTGRES_URL, embe
 logger.info("Loading RAG pipeline")
 llm_generator = OpenAIEngine(openai_client, settings.GENERATOR_MODEL)
 llm_rewriter = OpenAIEngine(openai_client, settings.REWRITER_MODEL)
-# embedding_model = SentenceTransformerEmbeddingProvider(model_path=settings.LOCAL_EMBEDDING_MODEL_PATH)
-embedding_model = HuggingFaceEmbeddingProvider(client=hf_client, model=settings.EMBEDDING_MODEL)
+embedding_model = SentenceTransformerEmbeddingProvider(model_path=settings.LOCAL_EMBEDDING_MODEL_PATH)
 chat_history = ChatHistory()
 
 def build_rag_pipeline():

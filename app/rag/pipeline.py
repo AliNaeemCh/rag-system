@@ -26,6 +26,8 @@ class RAGPipeline:
             if not eval_mode:
                 # Get chat history
                 chat_history = self.chat_history.get_recent(session_id)
+                if not chat_history:
+                    logger.info("New session request")
                 logger.debug(f"Chat history considered: {chat_history}")
             
             else:
@@ -38,6 +40,7 @@ class RAGPipeline:
                 rewritten_message, keywords = self.rewriter.rewrite(message=user_message,
                                                                     chat_history=chat_history,
                                                                     keyword_exclusion_list=settings.REWRITER_KW_EXCLUDE_LIST)
+                
                 message_for_retriever = rewritten_message + '\n' + keywords
 
                 logger.debug(f"Rewritten message for retriever: {message_for_retriever}")
@@ -58,13 +61,15 @@ class RAGPipeline:
             retrieved_context = "\n---\n".join([doc.content for doc in top_ranked_docs])
 
             # 7. Generate answer
+            logger.info("Calling generator LLM")
+
             if stream:
 
                 def gen():
                     full_response = ""
                     log_streaming_started = True
                     for chunk in self.generator.generate(
-                        user_message=rewritten_message,
+                        user_message=user_message,
                         retrieved_context=retrieved_context,
                         history=chat_history,
                         stream=True
@@ -89,9 +94,8 @@ class RAGPipeline:
                 return gen()
 
             else:
-
                 response = self.generator.generate(
-                    user_message=rewritten_message,
+                    user_message=user_message,
                     retrieved_context=retrieved_context,
                     history=chat_history,
                     stream=False

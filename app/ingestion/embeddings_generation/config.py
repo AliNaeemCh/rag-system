@@ -10,5 +10,5 @@ class EmbeddingPipelineConfig:
     embedding_dim: int = settings.EMBEDDING_DIMENSIONS
     m: int = settings.PGVECTOR_HNSW_M
     ef_construction: int = settings.PGVECTOR_HNSW_EF_CONSTRUCTION
-    num_workers: int = 2
+    num_workers: int = 4
     resume: bool = True

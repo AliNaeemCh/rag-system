@@ -1,8 +1,8 @@
 [
   {
     "total_chunks": 736,
-    "total_tokens": 175519,
-    "avg_tokens": 238.47690217391303,
+    "total_tokens": 175545,
+    "avg_tokens": 238.51222826086956,
     "min_tokens": 23,
     "max_tokens": 350,
     "avg_overlap": 18.16983695652174,

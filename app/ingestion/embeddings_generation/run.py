@@ -7,24 +7,22 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from app.core.utils import load_jsonl
 from app.core.config import settings
-from app.infra.dependencies import hf_inference_client
-from app.infra.embeddings.hugging_face import HuggingFaceEmbeddingProvider
+# from app.infra.dependencies import hf_inference_client
+from app.infra.embeddings.base import BaseEmbeddingProvider
+from app.infra.embeddings.sentence_transformer import SentenceTransformerEmbeddingProvider
 from app.infra.vector_stores.pgvector_store.store import PgVectorStore
 from app.ingestion.embeddings_generation.config import EmbeddingPipelineConfig
 import math
 
-def embed_batch(embedding_model: HuggingFaceEmbeddingProvider, texts: list[str], normalize: bool = True):
-    return embedding_model.embed_documents(texts, normalize=normalize)
+def embed_batch(embedding_model: BaseEmbeddingProvider, texts: list[str], normalize: bool = True, batch_size: int | None = None):
+    return embedding_model.embed_documents(texts, normalize=normalize, batch_size = batch_size)
 
 def run_pipeline(config: EmbeddingPipelineConfig):
     try:
         logger.info("Initializing pipeline...")
 
 
-        embedding_model = HuggingFaceEmbeddingProvider(
-            client=hf_inference_client,
-            model=config.embedding_model
-        )
+        embedding_model = SentenceTransformerEmbeddingProvider(model_path=settings.LOCAL_EMBEDDING_MODEL_PATH)
 
         vector_store = PgVectorStore(
             connection_string=settings.POSTGRES_URL,
@@ -46,8 +44,14 @@ def run_pipeline(config: EmbeddingPipelineConfig):
         last_processed_chunk_id = None
 
         if not config.resume:
+            while True:
+                user_in = input("Warning: Previously saved documents (if any) will be deleted. Type 'confirm' to proceed: ")
+                if user_in == "confirm":
+                    vector_store.reset_schema()
+                    break
+                else:
+                    print("Invalid input. Try again!")
             logger.info(f"Starting Embedding Generation... | File = {config.chunks_jsonl_path}")
-            vector_store.reset_schema()
         
         else:
             logger.info(f"Resuming Embedding Generation... | File = {config.chunks_jsonl_path}")
@@ -86,7 +90,8 @@ def run_pipeline(config: EmbeddingPipelineConfig):
                     executor.submit(
                         embed_batch,
                         embedding_model,
-                        batch_texts.copy()
+                        batch_texts.copy(),
+                        batch_size=config.batch_size
                     )
                 )
                 # store metadata aligned with this batch
@@ -118,7 +123,6 @@ def run_pipeline(config: EmbeddingPipelineConfig):
         total_batches = total_batches or completed_batches
         pbar.n = int((completed_batches / total_batches) * 100)
         pbar.refresh()
-
         # -------------------------
         # COLLECT RESULTS + WRITE
         # -------------------------
@@ -157,7 +161,7 @@ def run_pipeline(config: EmbeddingPipelineConfig):
 
 config = EmbeddingPipelineConfig(
     chunks_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
-    resume = True
+    resume = False
 )
 
 run_pipeline(config)

@@ -34,7 +34,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title(settings.TITLE)
+st.markdown(f"""
+<div style="padding: 10px 0 20px 0;">
+    <h2 style="margin-bottom: 5px;">{settings.TITLE}</h2>
+    <div style="color: gray; font-size: 13px;">
+        {settings.SUB_TITLE}
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown("### ⚙️ Response Mode")
@@ -57,6 +64,9 @@ if "session_id" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "chat_started" not in st.session_state:
+    st.session_state.chat_started = False
+
 # ----------------------------
 # render chat history
 # ----------------------------
@@ -67,7 +77,39 @@ for msg in st.session_state.messages:
 # ----------------------------
 # input
 # ----------------------------
-user_input = st.chat_input("Ask something...")
+pending_input = st.session_state.pop("pending_input", None)
+
+# ALWAYS render chat_input
+typed_input = st.chat_input("Ask something...")
+
+# choose pending hint OR typed message
+user_input = pending_input or typed_input
+
+if user_input:
+    st.session_state.chat_started = True
+
+# ----------------------------
+# hint questions
+# ----------------------------
+hint_slot = st.empty()
+
+if not st.session_state.chat_started and not user_input:
+    with hint_slot.container():
+        st.markdown("#### Try asking:")
+
+        hints = [
+            "What is the core business of Systems Ltd.?",
+            "Who is the CEO of Systems Ltd.?",
+            "What was Systems Ltd.’s profit in 2025?"
+        ]
+
+        for q in hints:
+            if st.button(q, key=q):
+                st.session_state.chat_started = True
+                st.session_state.pending_input = q
+                st.rerun()
+else:
+    hint_slot.empty()
 
 # ----------------------------
 # CSS typing animation (WhatsApp style)
@@ -116,6 +158,8 @@ TYPING_HTML = """<div class="typing">
 </style>"""
 
 if user_input:
+
+    st.session_state.chat_started = True
 
     # store + show user message
     st.session_state.messages.append({"role": "user", "content": user_input})
@@ -185,3 +229,4 @@ if user_input:
     st.session_state.messages.append(
         {"role": "assistant", "content": full_response}
     )
+

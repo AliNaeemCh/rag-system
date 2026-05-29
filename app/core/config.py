@@ -21,7 +21,8 @@ class OverlapGranularity(str, Enum):
 class Settings(BaseSettings):
 
     # APIs
-    TITLE: str = "Systems Limited AI Assistant"
+    TITLE: str = "Financial Report AI Assistant"
+    SUB_TITLE: str = "Powered by the publicly available 2025 Systems Limited annual report"
     BACKEND_BASE_URL: str
 
     @property
@@ -40,17 +41,16 @@ class Settings(BaseSettings):
     HF_BASE_URL: str = "https://router.huggingface.co/v1"
 
     # Embeddings
-    EMBEDDING_MODEL: str = "BAAI/bge-large-en-v1.5"
-    LOCAL_EMBEDDING_MODEL_PATH: Path = BASE_DIR / "models" / "embedding" / "bge-large-en-v1.5"
-    RETRIEVAL_INSTRUCTION: str = "Represent this sentence for searching relevant passages:"
-    # RETRIEVAL_INSTRUCTION: str = ""
-    EMBEDDING_DIMENSIONS: int = 1024
+    EMBEDDING_MODEL: str = "all-mpnet-base-v2"  # all-mpnet-base-v2: Max. seq. length: 384
+    LOCAL_EMBEDDING_MODEL_PATH: Path = BASE_DIR / "models" / "embedding" / "all-mpnet-base-v2"
+    RETRIEVAL_INSTRUCTION: str = ""
+    EMBEDDING_DIMENSIONS: int = 768
 
     # Message rewriter
     REWRITER_KW_EXCLUDE_LIST: list[str] = ["Systems Limited", "Systems Ltd."]
 
     # Reranker
-    RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L12-v2"   # cross-encoder/ms-marco-MiniLM-L12-v2: 33.4M params
+    RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L12-v2"   # cross-encoder/ms-marco-MiniLM-L12-v2: 33.4M params. Max. seq. length: 512
     RERANKER_MODEL_PATH: Path = BASE_DIR / "models" / "cross_encoder" / "ms-marco-MiniLM-L12-v2"
 
     # Database/Vector store
@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     
     PGVECTOR_HNSW_M: int = 16
     PGVECTOR_HNSW_EF_CONSTRUCTION: int = 64
-    PGVECTOR_HNSW_EF_SEARCH: int = 40
+    PGVECTOR_HNSW_EF_SEARCH: int = 100
 
     # RAG
     RETRIEVER_INITIAL_K: int = Field(default=20, ge=1, le=200)
@@ -92,7 +92,11 @@ class Settings(BaseSettings):
     OVERLAP_GRANULARITY: OverlapGranularity = OverlapGranularity.SENTENCE_BASED
     SEPARATE_H2s: bool = True
     CROSS_SECTION_OVERLAP: bool = False
-    CHUNKS_EMBEDDING_BATCH_SIZE: int = Field(default=64, ge=1)
+    CHUNKS_EMBEDDING_BATCH_SIZE: int = Field(default=1, ge=1)
+
+    # Prompts
+    ENTITY_NAME: str = "Systems Limited"
+    ENTITY_DESCRIPTION: str = "a global IT services and software company providing digital transformation and technology solutions."
 
     # Misc
     LOG_LEVEL: LogLevel = LogLevel.INFO # DEBUG < INFO < WARNING < ERROR < CRITICAL

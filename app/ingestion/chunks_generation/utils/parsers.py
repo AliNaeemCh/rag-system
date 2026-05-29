@@ -1,5 +1,3 @@
-import os
-import json
 from app.ingestion.chunks_generation.utils.processors import clean_transcription
 from app.core.utils import find_positions, replace_regex_pattern, combine_dicts, parse_ranges, crossing_index, load_jsonl
 from typing import Iterator
@@ -21,7 +19,7 @@ def iter_sections(file_path: Path, h_tags: list[str], last_chunk: dict | None=No
             last_chunk_content = last_chunk['content']
             if obj['page_no'] == last_chunk_page_no:
                 last_chunk_content = replace_regex_pattern(text=last_chunk_content, pattern=re.compile(r"H(\d+):"), replacement=r"<H\1>")    # Hx: -> <Hx>
-                transcription = clean_transcription(obj['transcription'])
+                transcription = clean_transcription(obj['transcription'])   # Contains document-specific logic
                 h_pos = find_positions(transcription, pattern=re.compile(r"<H\d+>"))
                 if h_pos:
                     len_h_tag = 4   # <Hx> length
@@ -37,7 +35,7 @@ def iter_sections(file_path: Path, h_tags: list[str], last_chunk: dict | None=No
             continue
         # <RESUMPTION LOGIC>
 
-        transcription = clean_transcription(obj['transcription'])
+        transcription = clean_transcription(obj['transcription'])   # Contains document-specific logic
         page_metadata = obj.get('metadata', {})
         if 'page_no' in obj:
             page_metadata['page_no'] = str(obj['page_no'])

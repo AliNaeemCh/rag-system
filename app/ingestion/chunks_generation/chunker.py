@@ -40,11 +40,9 @@ class Chunker:
             * If the last sentence of the previous chunk is longer than `chunk_overlap_tokens`,
                 it is still carried over to the next chunk, even if this exceeds the overlap limit, as long as it fits within the chunk with room for at least one more sentence.
         """
-        counter = 0
         def finalize_chunk():
             final_text = join_texts(current_sentences)
             final_chunk = prepend_hierarchy(final_text, hierarchy)
-            # print('FINALIZED CHUNK IS: ', final_chunk)
             chunks.append(final_chunk)
             # Metadata
             final_chunk_tokens = self.tokenizer.count_tokens(final_chunk)
@@ -127,24 +125,12 @@ class Chunker:
                                 break
                             h_idx -= 1
                         hierarchy_for_extended_text = hierarchy[:h_idx + 1]
-                        if h_idx < len(hierarchy) - 1:
-                            # print('HIERARCHY MUTATED')
-                            # print('CURRENT SENTENCE: ', sentence)
-                            # print('ORIGINAL HIERARCHY', hierarchy)
-                            # print('MOD HIERARCHY', hierarchy_for_extended_text)
-                            pass
                 sentence_token_count = self.tokenizer.count_tokens(sentence)
                 extended_text = prepend_hierarchy(text=join_texts(current_sentences + [sentence]), hierarchy=hierarchy_for_extended_text)
                 extended_text_token_count = self.tokenizer.count_tokens(extended_text)
-                # if counter > 100:
-                #     return
-                # print('CURRENT SENTENCES IS: ', current_sentences)
-                # print('extended_text IS: ', extended_text)
-                # print("TOKEN COUNT:", extended_text_token_count)
                 # If sentence fits in current chunk
                 # OR EDGE CASE: if the sentence is too long to fit in our chunk, we make exception and exceed the chunk size to fit this sentence
                 if extended_text_token_count <= self.config.chunk_size or sentence_token_count + overlap_tokens_count > self.config.chunk_size:
-                    # print('ENTERED APPENDING')
                     if sentence_token_count + overlap_tokens_count > self.config.chunk_size:
                         total_long_sentences += 1
                     if h_tag_pos is not None:
@@ -154,7 +140,6 @@ class Chunker:
                     all_sentences_counter += 1
 
                 else:
-                    # print('ENTERED FINALIZE CHUNK')
                     # Check if last sentence is of a subsection title
                     k = 1
                     while not current_sentences[-k].strip():
@@ -206,7 +191,6 @@ class Chunker:
                         total_overlap_tokens = self.tokenizer.count_tokens(join_texts(current_sentences))
                     else:
                         current_sentences, total_overlap_tokens = [], 0
-                counter += 1
             # Add final chunk
             if current_sentences:
                 finalize_chunk()
