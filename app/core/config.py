@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger("app.core.config")
+logger.info("Loading file...")
+
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from enum import Enum
@@ -24,6 +28,12 @@ class Settings(BaseSettings):
     TITLE: str = "Financial Report AI Assistant"
     SUB_TITLE: str = "Powered by the publicly available 2025 Systems Limited annual report"
     BACKEND_BASE_URL: str
+
+    # Security
+    API_KEY: str
+    RATE_LIMIT: int = Field(default=10, gt=0)           # Total requests limit 
+    WINDOW: int = Field(default=60, gt=0)               # Seconds
+    PAYLOAD_LIMIT: int = Field(default=50_000, gt=0)    # Bytes
 
     @property
     def CHAT_URL(self) -> str:
@@ -100,6 +110,7 @@ class Settings(BaseSettings):
 
     # Misc
     LOG_LEVEL: LogLevel = LogLevel.INFO # DEBUG < INFO < WARNING < ERROR < CRITICAL
+    USER_IN_MAX_CHARS: int = Field(default=250, gt=0)
 
     class Config:
         env_file = ".env"

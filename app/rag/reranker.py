@@ -1,8 +1,10 @@
-import logging
-from sentence_transformers import CrossEncoder
 from app.infra.vector_stores.pgvector_store.config import RetrievedDocument
-logger = logging.getLogger("rag.reranker")
 
+import logging
+logger = logging.getLogger("rag.reranker")
+logger.info("Loading file...")
+
+from sentence_transformers import CrossEncoder
 
 class Reranker:
     def __init__(self, reranker_model: CrossEncoder, top_k: int):

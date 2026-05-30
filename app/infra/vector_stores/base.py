@@ -1,7 +1,11 @@
+import logging
+logger = logging.getLogger("app.infra.vector_stores.base")
+logger.info("Loading file...")
+
 from abc import ABC, abstractmethod
 
 
-class VectorStoreBase(ABC):
+class BaseVectorStore(ABC):
     """
     Abstract contract for vector stores.
     Keeps retrieval layer decoupled from implementation.

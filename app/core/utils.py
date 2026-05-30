@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger("app.core.utils")
+logger.info("Loading file...")
+
 import re
 from pathlib import Path
 import json

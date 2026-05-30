@@ -13,13 +13,28 @@ sys.path.append(str(ROOT))
 
 from app.core.config import settings
 
+st.markdown("""
+<style>
+/* Global font size */
+html, body {
+    font-size: 18px !important;
+}
+
+/* Chat message text */
+[data-testid="stChatMessage"] * {
+    font-size: 20px !important;
+    line-height: 1.6 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.set_page_config(page_title=settings.TITLE, layout="centered")
 
 st.markdown("""
 <style>
 [data-testid="stSidebar"] {
-    width: 190px !important;
-    min-width: 190px !important;
+    width: 210px !important;
+    min-width: 210px !important;
 }
 
 [data-testid="stSidebar"] > div:first-child {
@@ -36,8 +51,8 @@ st.markdown("""
 
 st.markdown(f"""
 <div style="padding: 10px 0 20px 0;">
-    <h2 style="margin-bottom: 5px;">{settings.TITLE}</h2>
-    <div style="color: gray; font-size: 13px;">
+    <h1 style="margin-bottom: 5px;">{settings.TITLE}</h1>
+    <div style="color: gray; font-size: 16px;">
         {settings.SUB_TITLE}
     </div>
 </div>
@@ -95,7 +110,7 @@ hint_slot = st.empty()
 
 if not st.session_state.chat_started and not user_input:
     with hint_slot.container():
-        st.markdown("#### Try asking:")
+        st.markdown("### Try asking:")
 
         hints = [
             "What is the core business of Systems Ltd.?",
@@ -159,7 +174,9 @@ TYPING_HTML = """<div class="typing">
 
 if user_input:
 
-    st.session_state.chat_started = True
+    if len(user_input) > settings.USER_IN_MAX_CHARS:
+        st.error(f"❌ Input must be {settings.USER_IN_MAX_CHARS} characters or less.")
+        st.stop()   # stops execution for this run
 
     # store + show user message
     st.session_state.messages.append({"role": "user", "content": user_input})
@@ -182,14 +199,20 @@ if user_input:
         "mode": mode
     }
 
+    headers = {
+        "X-API-Key": settings.API_KEY
+    }
+
     try:
         with requests.post(
             settings.CHAT_URL,
             json=payload,
+            headers=headers,
             stream=True,
             timeout=300
         ) as res:
-
+            if res.status_code and res.status_code >= 400:
+                raise
             for line in res.iter_lines(decode_unicode=True):
 
                 if not line:

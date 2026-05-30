@@ -1,5 +1,10 @@
 from app.ingestion.chunks_generation.utils.processors import clean_transcription
 from app.core.utils import find_positions, replace_regex_pattern, combine_dicts, parse_ranges, crossing_index, load_jsonl
+
+import logging
+logger = logging.getLogger("app.ingestion.chunks_generation.utils.parsers")
+logger.info("Loading file...")
+
 from typing import Iterator
 from pathlib import Path
 import re

@@ -1,6 +1,10 @@
-from dataclasses import dataclass
-from enum import Enum
 from app.core.config import settings, OverlapGranularity
+
+import logging
+logger = logging.getLogger("app.ingestion.chunks_generation.config")
+logger.info("Loading file...")
+
+from dataclasses import dataclass
 
 @dataclass(slots=True)
 class ChunkingConfig:

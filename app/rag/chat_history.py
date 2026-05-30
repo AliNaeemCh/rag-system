@@ -1,9 +1,11 @@
-import time
-import logging
 
 from app.core.config import settings
 
+import logging
 logger = logging.getLogger("app.rag.chat_history")
+logger.info("Loading file...")
+
+import time
 
 class ChatHistory:
     def __init__(self):
@@ -69,3 +71,5 @@ class ChatHistory:
         """
         self.store.clear()
         logger.warning("Cleared all chat history")
+
+chat_history = ChatHistory()

@@ -1,6 +1,11 @@
 from app.infra.llm_engines.base import BaseLLMEngine
 from app.infra.llm_engines.openai.adapters.responses import OpenAIResponsesAdapter
 from app.infra.llm_engines.openai.adapters.chat_completions import OpenAIChatCompletionsAdapter
+
+import logging
+logger = logging.getLogger("app.infra.llm_engines.openai.engine")
+logger.info("Loading file...")
+
 from enum import Enum
 
 class OpenAIAPI(str, Enum):
@@ -11,8 +16,6 @@ class OpenAIEngine(BaseLLMEngine):
 
     def __init__(self, client, model, api: OpenAIAPI = OpenAIAPI.RESPONSES):
         self.client = client
-        self.model = model
-        self.api = api
 
         # choose adapter
         if api == OpenAIAPI.RESPONSES:

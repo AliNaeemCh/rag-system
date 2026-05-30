@@ -1,10 +1,15 @@
+from app.core.utils import write_json, reset_json
+
+import logging
+logger = logging.getLogger("app.analysis.chunks.generate_chunks_stats")
+logger.info("Loading file...")
+
 import json
 import statistics
 from collections import defaultdict
 import matplotlib.pyplot as plt
 from pathlib import Path
 import numpy as np
-from app.core.utils import write_json, reset_json
 
 results_dir = Path(__file__).resolve().parent / "results"
 

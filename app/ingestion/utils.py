@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger("app.ingestion.utils")
+logger.info("Loading file...")
+
 from pathlib import Path
 import json
 

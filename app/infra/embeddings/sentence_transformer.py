@@ -1,10 +1,12 @@
-from sentence_transformers import SentenceTransformer
 from app.infra.embeddings.base import BaseEmbeddingProvider
 from app.core.config import settings
-from pathlib import Path
-import logging
 
+import logging
 logger = logging.getLogger("app.infra.embeddings.sentence_transformer")
+logger.info("Loading file...")
+
+from sentence_transformers import SentenceTransformer
+from pathlib import Path
 
 class SentenceTransformerEmbeddingProvider(BaseEmbeddingProvider):
 

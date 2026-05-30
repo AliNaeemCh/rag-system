@@ -57,7 +57,7 @@ def setup_logging(
     console.setFormatter(colored_formatter)
 
     # File (plain — NO colors)
-    file_handler = logging.handlers.RotatingFileHandler(
+    file_handler = RotatingFileHandler(
         log_file,
         maxBytes=max_bytes,
         backupCount=backup_count,

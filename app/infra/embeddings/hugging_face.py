@@ -1,10 +1,12 @@
-import logging
-from huggingface_hub import InferenceClient
 from app.infra.embeddings.base import BaseEmbeddingProvider
 from app.core.retry_policies import huggingface_retry
 from app.core.config import settings
 
+import logging
 logger = logging.getLogger("app.infra.embeddings.hugging_face")
+logger.info("Loading file...")
+
+from huggingface_hub import InferenceClient
 
 class HuggingFaceEmbeddingProvider(BaseEmbeddingProvider):
 

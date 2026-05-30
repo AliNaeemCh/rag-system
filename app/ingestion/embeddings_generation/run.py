@@ -1,18 +1,20 @@
-import logging
 from app.core.logger import setup_logging
 setup_logging()
-logger = logging.getLogger("app.ingestion.embeddings_generation.run")
 
-from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor
 from app.core.utils import load_jsonl
 from app.core.config import settings
-# from app.infra.dependencies import hf_inference_client
 from app.infra.embeddings.base import BaseEmbeddingProvider
 from app.infra.embeddings.sentence_transformer import SentenceTransformerEmbeddingProvider
 from app.infra.vector_stores.pgvector_store.store import PgVectorStore
 from app.ingestion.embeddings_generation.config import EmbeddingPipelineConfig
+
+import logging
+logger = logging.getLogger("app.ingestion.embeddings_generation.run")
+logger.info("Loading file...")
+
 import math
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
 
 def embed_batch(embedding_model: BaseEmbeddingProvider, texts: list[str], normalize: bool = True, batch_size: int | None = None):
     return embedding_model.embed_documents(texts, normalize=normalize, batch_size = batch_size)
@@ -20,7 +22,6 @@ def embed_batch(embedding_model: BaseEmbeddingProvider, texts: list[str], normal
 def run_pipeline(config: EmbeddingPipelineConfig):
     try:
         logger.info("Initializing pipeline...")
-
 
         embedding_model = SentenceTransformerEmbeddingProvider(model_path=settings.LOCAL_EMBEDDING_MODEL_PATH)
 

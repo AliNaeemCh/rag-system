@@ -1,4 +1,3 @@
-import logging
 from app.rag.message_rewriter import MessageRewriter
 from app.rag.chat_history import ChatHistory
 from app.rag.retriever import Retriever
@@ -7,8 +6,8 @@ from app.rag.generator import Generator
 from app.core.config import settings
 from app.rag.config import ResponseMode
 
+import logging
 logger = logging.getLogger("app.rag.pipeline")
-
 logger.info("Loading file...")
 
 class RAGPipeline:
@@ -21,7 +20,7 @@ class RAGPipeline:
 
     def run(self, user_message: str, session_id: str, stream: bool = True, eval_mode: bool = False, response_mode: ResponseMode = ResponseMode.ADVANCED) -> str:
         try:
-            logger.info(f"User message received")
+            logger.info(f"User message received: {user_message}")
             
             if not eval_mode:
                 # Get chat history

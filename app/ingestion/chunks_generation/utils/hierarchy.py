@@ -1,5 +1,9 @@
 from app.core.utils import find_positions
 
+import logging
+logger = logging.getLogger("app.ingestion.chunks_generation.utils.hierarchy")
+logger.info("Loading file...")
+
 def prepend_hierarchy(text: str, hierarchy: list[str]):
         text = text.strip()
         headings_to_prepend = []

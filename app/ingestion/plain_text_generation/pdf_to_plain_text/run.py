@@ -1,8 +1,15 @@
+from app.core.logger import setup_logging
+setup_logging()
+
 from app.ingestion.plain_text_generation.pdf_to_plain_text.config.pdf_config_builder import build_pdf_config
 from app.ingestion.plain_text_generation.pdf_to_plain_text.pdf_ingestor import PDFIngestor
 from app.core.config import settings
 from app.infra.dependencies import gemini_openai_client
 from app.infra.llm_engines.openai.engine import OpenAIEngine, OpenAIAPI
+
+import logging
+logger = logging.getLogger("app.ingestion.plain_text_generation.pdf_to_plain_text.run")
+logger.info("Loading file...")
 
 raw_config = {
     "pdf_path": settings.RAW_DATA_DIR / "SYS Limited Annual - 2025.pdf",

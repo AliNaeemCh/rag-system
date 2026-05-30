@@ -1,9 +1,11 @@
 from app.infra.llm_engines.openai.adapters.base import OpenAIBaseAdapter
-import logging
 from app.core.retry_policies import openai_retry
-from openai import OpenAI
 
+import logging
 logger = logging.getLogger("app.infra.llms_engines.openai.adapters.responses")
+logger.info("Loading file...")
+
+from openai import OpenAI
 
 class OpenAIResponsesAdapter(OpenAIBaseAdapter):
 

@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger("app.infra.llm_engines.openai.adapters.base")
+logger.info("Loading file...")
+
 from abc import ABC, abstractmethod
 
 class OpenAIBaseAdapter(ABC):

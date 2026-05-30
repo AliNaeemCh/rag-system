@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger("app.ingestion.plain_text_generation.pdf_to_plain_text.utils")
+logger.info("Loading file...")
+
 from pdf2image import convert_from_path
 from pypdf import PdfReader
 import base64

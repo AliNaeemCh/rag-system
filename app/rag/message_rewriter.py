@@ -1,12 +1,13 @@
-import logging
 from app.prompts.prompt_utils import build_rewriter_user_prompt
-from app.infra.llm_engines.openai.engine import OpenAIEngine
+from app.infra.llm_engines.base import BaseLLMEngine
 
+import logging
 logger = logging.getLogger("app.rag.rewriter")
+logger.info("Loading file...")
 
 
 class MessageRewriter:
-    def __init__(self, llm: OpenAIEngine, system_prompt: str, output_schema: dict):
+    def __init__(self, llm: BaseLLMEngine, system_prompt: str, output_schema: dict):
         self.llm = llm
         self.system_prompt = system_prompt
         self.output_schema = output_schema

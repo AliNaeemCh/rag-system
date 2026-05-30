@@ -1,17 +1,17 @@
-import logging
-from app.core.logger import setup_logging
 from app.ingestion.plain_text_generation.pdf_to_plain_text.utils import pdf_page_to_image
 from app.ingestion.utils import get_transcription_by_page, extract_completed_page_numbers
 from app.core.utils import write_jsonl, reset_jsonl
 from app.ingestion.plain_text_generation.pdf_to_plain_text.config.pdf_config import PDFIngestionConfig
-from app.infra.llm_engines.openai.engine import OpenAIEngine
-import re
+from app.infra.llm_engines.base import BaseLLMEngine
 from app.ingestion.plain_text_generation.pdf_to_plain_text.utils import get_metadata
 from app.prompts.pdf_transcriber import PDF_TRANSCRIBER_SYSTEM_PROMPT
-from tqdm import tqdm
 
-setup_logging()
+import logging
 logger = logging.getLogger("app.ingestion.plain_text_generation.pdf_to_plain_text.pdf_ingestor")
+logger.info("Loading file...")
+
+import re
+from tqdm import tqdm
 
 class PDFIngestor:
     """
@@ -19,7 +19,7 @@ class PDFIngestor:
         PDF -> page transcription -> JSONL
     """
 
-    def __init__(self, llm_engine: OpenAIEngine, fallback_llm_engine: OpenAIEngine | None = None):
+    def __init__(self, llm_engine: BaseLLMEngine, fallback_llm_engine: BaseLLMEngine | None = None):
         self.llm_engine = llm_engine
         self.fallback_llm_engine = fallback_llm_engine
 

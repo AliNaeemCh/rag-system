@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger("app.core.tokenizer")
+logger.info("Loading file...")
+
 import tiktoken
 
 class Tokenizer:

@@ -1,9 +1,3 @@
-from huggingface_hub import InferenceClient
-from openai import OpenAI
-from app.core.config import settings
-from sentence_transformers import CrossEncoder
-from app.infra.vector_stores.pgvector_store.store import PgVectorStore
-import logging
 from app.rag.message_rewriter import MessageRewriter
 from app.rag.retriever import Retriever
 from app.rag.reranker import Reranker
@@ -12,9 +6,17 @@ from app.rag.pipeline import RAGPipeline
 from app.infra.llm_engines.openai.engine import OpenAIEngine
 from app.infra.embeddings.sentence_transformer import SentenceTransformerEmbeddingProvider
 from app.prompts.rag import GENERATOR_SYSTEM_PROMPT, REWRITER_SYSTEM_PROMPT, REWRITER_SCHEMA
-from app.rag.chat_history import ChatHistory
+from app.rag.chat_history import chat_history
+from app.core.config import settings
+from app.infra.vector_stores.pgvector_store.store import PgVectorStore
 
+import logging
 logger = logging.getLogger("app.infra.dependencies")
+logger.info("Loading file...")
+
+from openai import OpenAI
+from sentence_transformers import CrossEncoder
+from huggingface_hub import InferenceClient
 
 def create_openai_client(api_key: str, base_url: str | None = None):
     return OpenAI(api_key=api_key, base_url=base_url)
@@ -46,7 +48,6 @@ logger.info("Loading RAG pipeline")
 llm_generator = OpenAIEngine(openai_client, settings.GENERATOR_MODEL)
 llm_rewriter = OpenAIEngine(openai_client, settings.REWRITER_MODEL)
 embedding_model = SentenceTransformerEmbeddingProvider(model_path=settings.LOCAL_EMBEDDING_MODEL_PATH)
-chat_history = ChatHistory()
 
 def build_rag_pipeline():
     rewriter = MessageRewriter(llm=llm_rewriter, system_prompt=REWRITER_SYSTEM_PROMPT, output_schema=REWRITER_SCHEMA)

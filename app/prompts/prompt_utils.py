@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger("app.prompts.prompt_utils")
+logger.info("Loading file...")
+
 def build_rewriter_user_prompt(query, chat_history):
     context = "\n".join([
         f"{'User' if i % 2 == 0 else 'Assistant'}: {obj['content'].strip()}"

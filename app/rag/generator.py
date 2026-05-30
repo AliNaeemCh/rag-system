@@ -1,12 +1,12 @@
-import logging
-from app.core.config import settings
-from app.infra.llm_engines.openai.engine import OpenAIEngine
+from app.infra.llm_engines.base import BaseLLMEngine
 
+import logging
 logger = logging.getLogger("rag.generator")
+logger.info("Loading file...")
 
 
 class Generator:
-    def __init__(self, llm: OpenAIEngine, system_prompt: str):
+    def __init__(self, llm: BaseLLMEngine, system_prompt: str):
         """
         llm: LLM wrapper (OpenAI, HuggingFace, vLLM, etc.)
         system_prompt: System prompt for generation

@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger("app.infra.llm_engines.base")
+logger.info("Loading file...")
+
 import json
 from abc import ABC, abstractmethod
 

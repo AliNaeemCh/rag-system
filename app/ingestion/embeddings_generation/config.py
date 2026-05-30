@@ -1,4 +1,9 @@
 from app.core.config import settings
+
+import logging
+logger = logging.getLogger("app.ingestion.embeddings_generation.config")
+logger.info("Loading file...")
+
 from pathlib import Path
 from dataclasses import dataclass
 

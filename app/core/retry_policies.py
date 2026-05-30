@@ -1,5 +1,8 @@
-from dataclasses import dataclass
 import logging
+logger = logging.getLogger("app.core.retry_policies")
+logger.info("Loading file...")
+
+from dataclasses import dataclass
 from tenacity import (
     retry,
     stop_after_attempt,

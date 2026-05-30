@@ -3,7 +3,12 @@ from app.ingestion.chunks_generation.utils.processors import join_texts
 from app.ingestion.chunks_generation.utils.overlap import generate_overlap_texts
 from app.ingestion.chunks_generation.utils.hierarchy import prepend_hierarchy
 from app.core.tokenizer import Tokenizer
-from app.core.utils import find_positions, replace_regex_pattern, combine_dicts, crossing_index
+from app.core.utils import find_positions, replace_regex_pattern, crossing_index
+
+import logging
+logger = logging.getLogger("app.ingestion.chunks_generation.chunker")
+logger.info("Loading file...")
+
 import re
 from itertools import accumulate
 

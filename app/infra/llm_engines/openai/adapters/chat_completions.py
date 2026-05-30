@@ -1,9 +1,11 @@
 from app.infra.llm_engines.openai.adapters.base import OpenAIBaseAdapter
-import logging
 from app.core.retry_policies import openai_retry
-from openai import OpenAI
 
+import logging
 logger = logging.getLogger("app.infra.llm_engines.openai.adapters.chat_completions")
+logger.info("Loading file...")
+
+from openai import OpenAI
 
 class OpenAIChatCompletionsAdapter(OpenAIBaseAdapter):
 

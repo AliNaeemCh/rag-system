@@ -1,12 +1,14 @@
+from app.infra.vector_stores.base import BaseVectorStore
+from app.infra.vector_stores.pgvector_store.config import RetrievedDocument
+
+import logging
+logger = logging.getLogger("app.infra.vector_stores.pg_vector_store.store")
+logger.info("Loading file...")
+
 import psycopg2
 from psycopg2.extras import execute_values, Json
-from app.infra.vector_stores.base import VectorStoreBase
-from app.infra.vector_stores.pgvector_store.config import RetrievedDocument
-import logging
 
-logger = logging.getLogger("app.infra.vector_stores.pg_vector_store.store")
-
-class PgVectorStore(VectorStoreBase):
+class PgVectorStore(BaseVectorStore):
     """
     PostgreSQL + pgvector (cosine similarity + HNSW index)
     - embeddings stored in Postgres

@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger("app.prompts.pdf_transcriber")
+logger.info("Loading file...")
+
 PDF_TRANSCRIBER_SYSTEM_PROMPT = """Instructions for extracting text from the image:
 
 1. Text Extraction:

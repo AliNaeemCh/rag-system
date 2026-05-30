@@ -1,4 +1,9 @@
 from app.core.utils import find_positions
+
+import logging
+logger = logging.getLogger("app.ingestion.chunks_generation.utils.processors")
+logger.info("Loading file...")
+
 import re
 
 def join_texts(sentences: list[str]):

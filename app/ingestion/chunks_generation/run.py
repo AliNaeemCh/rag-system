@@ -1,4 +1,6 @@
-from tqdm import tqdm
+from app.core.logger import setup_logging
+setup_logging()
+
 from app.ingestion.chunks_generation.utils.parsers import iter_sections
 from app.ingestion.chunks_generation.chunker import Chunker
 from app.analysis.chunks.generate_chunks_stats import generate_chunks_stats
@@ -6,14 +8,16 @@ from app.ingestion.chunks_generation.config import ChunkingConfig
 from app.core.utils import write_jsonl, reset_jsonl, find_positions, extract_last_jsonl_object
 from app.core.tokenizer import tokenizer
 from app.ingestion.chunks_generation.utils.nlp import nlp
-from pathlib import Path
 from app.core.config import settings
-import logging
-from app.core.logger import setup_logging
-import re
 
-setup_logging()
+import logging
 logger = logging.getLogger("app.ingestion.chunks_generation.run")
+logger.info("Loading file...")
+
+from tqdm import tqdm
+from pathlib import Path
+import logging
+import re
 
 def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path: Path):
     try:

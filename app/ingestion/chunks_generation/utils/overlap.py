@@ -2,6 +2,9 @@ from app.ingestion.chunks_generation.config import OverlapGranularity
 from app.ingestion.chunks_generation.utils.processors import join_texts
 from app.core.tokenizer import tokenizer
 
+import logging
+logger = logging.getLogger("app.ingestion.chunks_generation.utils.overlap")
+logger.info("Loading file...")
 
 def generate_overlap_texts(
     sentences: list[str],

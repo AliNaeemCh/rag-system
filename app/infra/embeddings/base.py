@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger("app.infra.embeddings.base")
+logger.info("Loading file...")
+
 from abc import ABC, abstractmethod
 import numpy as np
 from typing import Union, List
