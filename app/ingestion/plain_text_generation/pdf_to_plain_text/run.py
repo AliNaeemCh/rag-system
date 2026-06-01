@@ -80,8 +80,8 @@ raw_config = {
 
 pdf_config = build_pdf_config(raw_config)
 
-pdf_ingestor_llm_engine = OpenAIEngine(gemini_openai_client, settings.PDF_TRANSCRIBER_MODEL, api=OpenAIAPI.CHAT_COMPLETIONS)
-pdf_ingestor_fallback_llm_engine = OpenAIEngine(gemini_openai_client, settings.PDF_TRANSCRIBER_FALLBACK_MODEL, api=OpenAIAPI.CHAT_COMPLETIONS)
+pdf_ingestor_llm_engine = OpenAIEngine(model_name=settings.PDF_TRANSCRIBER_MODEL, client=gemini_openai_client, api=OpenAIAPI.CHAT_COMPLETIONS)
+pdf_ingestor_fallback_llm_engine = OpenAIEngine(model_name=settings.PDF_TRANSCRIBER_FALLBACK_MODEL, client=gemini_openai_client, api=OpenAIAPI.CHAT_COMPLETIONS)
 
 ingestor = PDFIngestor(llm_engine=pdf_ingestor_llm_engine, fallback_llm_engine=pdf_ingestor_fallback_llm_engine)
 ingestor.ingest(pdf_config)

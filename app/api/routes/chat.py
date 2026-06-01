@@ -78,7 +78,7 @@ async def chat_endpoint(
             })}\n\n"
 
         except Exception as e:
-            logger.exception("Error in chat endpoint")
+            logger.exception(f"Error in chat endpoint: {e}")
 
             yield f"data: {json.dumps({
                 'type': 'error',

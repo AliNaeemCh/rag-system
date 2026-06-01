@@ -1,17 +1,18 @@
 from app.infra.vector_stores.base import BaseVectorStore
 from app.infra.embeddings.base import BaseEmbeddingProvider
 from app.core.config import settings
+from app.infra.db.pool import db_pool
 
 import logging
 logger = logging.getLogger("rag.retriever")
 logger.info("Loading file...")
 
+from psycopg2.extensions import connection
 
 class Retriever:
-    def __init__(self, embedding_model: BaseEmbeddingProvider, vector_store: BaseVectorStore, retrieval_instruction: str, top_k: int):
+    def __init__(self, embedding_model: BaseEmbeddingProvider, vector_store: BaseVectorStore, top_k: int):
         self.embedding_model = embedding_model
         self.vector_store = vector_store
-        self.retrieval_instruction = retrieval_instruction
         self.top_k = top_k
 
     def retrieve(self, query: str, filters: dict | None = None, normalize_query: bool = True, ef_search: int | None = None):
@@ -25,7 +26,7 @@ class Retriever:
         logger.info(f"Retrieval started")
 
         # 1. Get embedding
-        query_embedding = self.embedding_model.embed_query(query, normalize=normalize_query, retrieval_instruction=self.retrieval_instruction)
+        query_embedding = self.embedding_model.embed_query(query, normalize=normalize_query)
 
         # 2. Search vector store
         docs = self.vector_store.similarity_search(

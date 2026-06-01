@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     @property
     def CHAT_URL(self) -> str:
         return self.BACKEND_BASE_URL + "/api/v1/chat"
+    
     # LLM
     GEMINI_API_KEY: str
     OPENAI_API_KEY_SHARING: str
@@ -63,26 +64,62 @@ class Settings(BaseSettings):
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L12-v2"   # cross-encoder/ms-marco-MiniLM-L12-v2: 33.4M params. Max. seq. length: 512
     RERANKER_MODEL_PATH: Path = BASE_DIR / "models" / "cross_encoder" / "ms-marco-MiniLM-L12-v2"
 
-    # Database/Vector store
-    DB_USER: str
-    DB_PASSWORD: str
-    DB_HOST: str
-    DB_PORT: int
-    DB_NAME: str
+    # DBs
+    DATABASE: str
+
+    # - Local
+    LOCAL_DB_USER: str
+    LOCAL_DB_PASSWORD: str
+    LOCAL_DB_HOST: str
+    LOCAL_DB_PORT: int
+    LOCAL_DB_NAME: str
+
+    # - Remote
+    REMOTE_DB_USER: str
+    REMOTE_DB_PASSWORD: str
+    REMOTE_DB_HOST: str
+    REMOTE_DB_PORT: int
+    REMOTE_DB_NAME: str
+
+    # - Usage tracker
+    USAGE_TRACKER_DB_USER: str
+    USAGE_TRACKER_DB_PASSWORD: str
+    USAGE_TRACKER_DB_HOST: str
+    USAGE_TRACKER_DB_PORT: int
+    USAGE_TRACKER_DB_NAME: str
 
     @property
-    def POSTGRES_URL(self) -> str:
+    def DB_URL(self) -> str:
+        if self.DATABASE == 'local':
+            return (
+                f"postgresql://{self.LOCAL_DB_USER}:"
+                f"{self.LOCAL_DB_PASSWORD}@"
+                f"{self.LOCAL_DB_HOST}:"
+                f"{self.LOCAL_DB_PORT}/"
+                f"{self.LOCAL_DB_NAME}"
+            )
+        elif self.DATABASE == 'remote':
+            return (
+                f"postgresql://{self.REMOTE_DB_USER}:"
+                f"{self.REMOTE_DB_PASSWORD}@"
+                f"{self.REMOTE_DB_HOST}:"
+                f"{self.REMOTE_DB_PORT}/"
+                f"{self.REMOTE_DB_NAME}"
+            )
+
+    @property
+    def USAGE_TRACKER_DB_URL(self) -> str:
         return (
-            f"postgresql://{self.DB_USER}:"
-            f"{self.DB_PASSWORD}@"
-            f"{self.DB_HOST}:"
-            f"{self.DB_PORT}/"
-            f"{self.DB_NAME}"
+            f"postgresql://{self.USAGE_TRACKER_DB_USER}:"
+            f"{self.USAGE_TRACKER_DB_PASSWORD}@"
+            f"{self.USAGE_TRACKER_DB_HOST}:"
+            f"{self.USAGE_TRACKER_DB_PORT}/"
+            f"{self.USAGE_TRACKER_DB_NAME}"
         )
     
     PGVECTOR_HNSW_M: int = 16
     PGVECTOR_HNSW_EF_CONSTRUCTION: int = 64
-    PGVECTOR_HNSW_EF_SEARCH: int = 100
+    PGVECTOR_HNSW_EF_SEARCH: int = 40
 
     # RAG
     RETRIEVER_INITIAL_K: int = Field(default=20, ge=1, le=200)

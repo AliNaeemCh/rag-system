@@ -9,10 +9,6 @@ from openai import OpenAI
 
 class OpenAIResponsesAdapter(OpenAIBaseAdapter):
 
-    def __init__(self, client: OpenAI, model: str):
-        self.client = client
-        self.model = model
-
     def build_messages(self, system_prompt: str | None, user_prompt: str | None, image_urls: str | list[str] | None, history: list[dict] | None):
         history = history or []
         if image_urls is not None:
@@ -34,10 +30,50 @@ class OpenAIResponsesAdapter(OpenAIBaseAdapter):
             history +
             user
         )
+    
+    @openai_retry(logger)
+    def stream(self, model_name: str, client: OpenAI, request: dict):
+        payload = self._build_payload(model_name=model_name, request=request)
+        response = client.responses.stream(**payload)
+        state = {"final_response": None}
+        def gen():
+            with response as s:
+                for event in s:
+                    if event.type == "response.output_text.delta" and event.delta:
+                        yield event.delta
+                # available after stream completes
+                state["final_response"] = s.get_final_response()
 
-    def build_payload(self, request):
+        return gen(), state
+
+    @openai_retry(logger)
+    def create(self, model_name: str, client: OpenAI, request: dict):
+        payload = self._build_payload(model_name=model_name, request=request)
+        return client.responses.create(**payload)
+
+    def extract_text(self, response):
+        output_text = response.output_text
+        return output_text.strip() if output_text is not None else output_text
+
+    def extract_usage(self, response: dict) -> dict:
+        usage = getattr(response, "usage", None)
+
+        if usage is None:
+            return {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+            }
+
+        return {
+            "input_tokens": getattr(usage, "input_tokens", 0),
+            "output_tokens": getattr(usage, "output_tokens", 0),
+            "total_tokens": getattr(usage, "total_tokens", 0),
+        }
+    
+    def _build_payload(self, model_name: str, request: dict):
         payload = {
-            "model": self.model,
+            "model": model_name,
             "input": request["messages"],
             "temperature": request["temperature"] if not request.get("reasoning") else None
         }
@@ -56,25 +92,3 @@ class OpenAIResponsesAdapter(OpenAIBaseAdapter):
             }
 
         return payload
-    
-    @openai_retry(logger)
-    def stream(self, request):
-        payload = self.build_payload(request)
-        response = self.client.responses.stream(**payload)
-
-        def gen():
-            with response as s:
-                for event in s:
-                    if event.type == "response.output_text.delta" and event.delta:
-                        yield event.delta
-
-        return gen()
-
-    @openai_retry(logger)
-    def create(self, request):
-        payload = self.build_payload(request)
-        return self.client.responses.create(**payload)
-
-    def extract_text(self, response):
-        output_text = response.output_text
-        return output_text.strip() if output_text is not None else output_text

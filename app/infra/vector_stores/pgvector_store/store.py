@@ -1,12 +1,14 @@
 from app.infra.vector_stores.base import BaseVectorStore
 from app.infra.vector_stores.pgvector_store.config import RetrievedDocument
+from app.infra.db.session import get_connection
+from app.infra.db.retry import db_retry
 
 import logging
 logger = logging.getLogger("app.infra.vector_stores.pg_vector_store.store")
 logger.info("Loading file...")
 
-import psycopg2
 from psycopg2.extras import execute_values, Json
+from psycopg2.pool import SimpleConnectionPool
 
 class PgVectorStore(BaseVectorStore):
     """
@@ -16,16 +18,17 @@ class PgVectorStore(BaseVectorStore):
     - HNSW index for ANN retrieval
     """
 
-    def __init__(self, connection_string: str, embedding_dim: int, m: int, ef_construction: int):
-        self.conn = psycopg2.connect(connection_string)
+    def __init__(self, db_pool: SimpleConnectionPool, embedding_dim: int, m: int, ef_construction: int):
         self.embedding_dim = embedding_dim
         self.m = m
         self.ef_construction = ef_construction
+        self.db_pool = db_pool
         self._ensure_schema()
 
+    @db_retry()
     def _ensure_schema(self):
-        with self.conn:
-            with self.conn.cursor() as cur:
+        with get_connection(self.db_pool) as conn:
+            with conn.cursor() as cur:
                 # Enable pgvector extension
                 cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
@@ -54,10 +57,11 @@ class PgVectorStore(BaseVectorStore):
                         ef_construction = {self.ef_construction}
                     );
                 """)
-
+    
+    @db_retry()
     def reset_schema(self):
-        with self.conn:
-            with self.conn.cursor() as cur:
+        with get_connection(self.db_pool) as conn:
+            with conn.cursor() as cur:
                 # 1. Drop everything
                 cur.execute("DROP TABLE IF EXISTS documents;")
 
@@ -84,16 +88,19 @@ class PgVectorStore(BaseVectorStore):
             for id, text, embedding, metadata in zip(chunk_ids, texts, embeddings, metadatas)
         ]
 
-        with self.conn:
-            with self.conn.cursor() as cur:
-                execute_values(
-                    cur,
-                    """
-                    INSERT INTO documents (id, content, embedding, metadata)
-                    VALUES %s
-                    """,
-                    rows,
-                )
+        def _db_op():
+            with get_connection(self.db_pool) as conn:
+                with conn.cursor() as cur:
+                    execute_values(
+                        cur,
+                        """
+                        INSERT INTO documents (id, content, embedding, metadata)
+                        VALUES %s
+                        """,
+                        rows,
+                    )
+
+        db_retry()(_db_op)()
 
     def similarity_search(
         self,
@@ -129,11 +136,14 @@ class PgVectorStore(BaseVectorStore):
 
         params.extend([query_embedding, top_k])
 
-        with self.conn:
-            with self.conn.cursor() as cur:
-                cur.execute(f"SET LOCAL hnsw.ef_search = {ef_search}")
-                cur.execute(sql, params)
-                rows = cur.fetchall()
+        def _db_op():
+            with get_connection(self.db_pool) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(f"SET LOCAL hnsw.ef_search = {ef_search}")
+                    cur.execute(sql, params)
+                    return cur.fetchall()
+
+        rows = db_retry()(_db_op)()
         
         logger.info("Similarity search completed")
 
@@ -146,27 +156,22 @@ class PgVectorStore(BaseVectorStore):
             })
             for r in rows
         ]
-
+    
+    @db_retry()
     def delete(self, ids: int | list[int]) -> None:
         if isinstance(ids, int):
             ids = [ids]
 
-        with self.conn:
-            with self.conn.cursor() as cur:
+        with get_connection(self.db_pool) as conn:
+            with conn.cursor() as cur:
                 cur.execute(
                     "DELETE FROM documents WHERE id = ANY(%s)",
                     (ids,),
                 )
 
+    @db_retry()
     def get_max_id(self):
-        with self.conn.cursor() as cur:
-            cur.execute(f'''
-                SELECT COALESCE(MAX(id), 0)
-                FROM documents;
-            ''')
-            result = cur.fetchone()[0]
-        return result
-        
-    def close_conn(self):
-        if self.conn:
-            self.conn.close()
+        with get_connection(self.db_pool) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COALESCE(MAX(id), 0) FROM documents;")
+                return cur.fetchone()[0]

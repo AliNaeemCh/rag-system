@@ -1,12 +1,14 @@
 from app.infra.llm_engines.base import BaseLLMEngine
 from app.infra.llm_engines.openai.adapters.responses import OpenAIResponsesAdapter
 from app.infra.llm_engines.openai.adapters.chat_completions import OpenAIChatCompletionsAdapter
+from app.infra.usage_tracking.tracker import UsageTracker
 
 import logging
 logger = logging.getLogger("app.infra.llm_engines.openai.engine")
 logger.info("Loading file...")
 
 from enum import Enum
+from openai import OpenAI
 
 class OpenAIAPI(str, Enum):
     RESPONSES = "responses"
@@ -14,18 +16,19 @@ class OpenAIAPI(str, Enum):
 
 class OpenAIEngine(BaseLLMEngine):
 
-    def __init__(self, client, model, api: OpenAIAPI = OpenAIAPI.RESPONSES):
+    def __init__(self, model_name: str, client: OpenAI, api: OpenAIAPI = OpenAIAPI.RESPONSES, usage_tracker: UsageTracker | None = None):
+        super().__init__(model_name=model_name, usage_tracker=usage_tracker)
         self.client = client
 
         # choose adapter
         if api == OpenAIAPI.RESPONSES:
-            self.adapter = OpenAIResponsesAdapter(client, model)
+            self.adapter = OpenAIResponsesAdapter()
         elif api == OpenAIAPI.CHAT_COMPLETIONS:
-            self.adapter = OpenAIChatCompletionsAdapter(client, model)
+            self.adapter = OpenAIChatCompletionsAdapter()
         else:
             raise ValueError("Invalid API")
         
-    def build_request(
+    def _build_request(
         self,
         system_prompt,
         user_prompt,
@@ -49,11 +52,29 @@ class OpenAIEngine(BaseLLMEngine):
             "reasoning": reasoning,
         }
 
-    def stream(self, request):
-        return self.adapter.stream(request)
+    def _stream(self, request):
+        gen, state = self.adapter.stream(
+            model_name=self.model_name,
+            client=self.client,
+            request=request,
+        )
 
-    def create(self, request):
-        return self.adapter.create(request)
+        def wrapper():
+            yield from gen
+            final_response = state["final_response"]
+            if final_response:
+                self._increment_usage(
+                    response=final_response,
+                    model_name=self.model_name,
+                )
 
-    def extract_text(self, response):
+        return wrapper()
+
+    def _create(self, request):
+        return self.adapter.create(model_name=self.model_name, client=self.client, request=request)
+
+    def _extract_text(self, response):
         return self.adapter.extract_text(response)
+
+    def _extract_usage(self, response: dict) -> dict:
+        return self.adapter.extract_usage(response)

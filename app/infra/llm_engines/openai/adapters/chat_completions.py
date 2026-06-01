@@ -8,10 +8,6 @@ logger.info("Loading file...")
 from openai import OpenAI
 
 class OpenAIChatCompletionsAdapter(OpenAIBaseAdapter):
-
-    def __init__(self, client: OpenAI, model: str):
-        self.client = client
-        self.model = model
     
     def build_messages(self, system_prompt: str | None, user_prompt: str | None, image_urls: str | list[str] | None, history: list[dict] | None):
         history = history or []
@@ -35,9 +31,50 @@ class OpenAIChatCompletionsAdapter(OpenAIBaseAdapter):
             user
         )
     
-    def build_payload(self, request):
+
+    @openai_retry(logger)
+    def stream(self, model_name: str, client: OpenAI, request: dict):
+        payload = self._build_payload(model_name=model_name, request=request)
+        payload["stream"] = True
+
+        response = client.chat.completions.create(**payload)
+
+        def gen():
+            for chunk in response:
+                delta = chunk.choices[0].delta.content
+                if delta:
+                    yield delta
+
+        return gen()
+    
+    @openai_retry(logger)
+    def create(self, model_name: str, client: OpenAI, request: dict):
+        payload = self._build_payload(model_name=model_name, request=request)
+        return client.chat.completions.create(**payload)
+
+    def extract_text(self, response: dict):
+        output_text = response.choices[0].message.content
+        return output_text.strip() if output_text is not None else output_text
+
+    def extract_usage(self, response: dict) -> dict:
+        usage = getattr(response, "usage", None)
+
+        if usage is None:
+            return {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+            }
+
+        return {
+            "input_tokens": getattr(usage, "prompt_tokens", 0),
+            "output_tokens": getattr(usage, "completion_tokens", 0),
+            "total_tokens": getattr(usage, "total_tokens", 0),
+        }
+    
+    def _build_payload(self, model_name: str, request: dict):
         payload = {
-            "model": self.model,
+            "model": model_name,
             "messages": request["messages"],
             "temperature": request.get("temperature") if not request.get('reasoning') else None,
         }
@@ -56,27 +93,3 @@ class OpenAIChatCompletionsAdapter(OpenAIBaseAdapter):
             }
 
         return payload
-
-    @openai_retry(logger)
-    def stream(self, request):
-        payload = self.build_payload(request)
-        payload["stream"] = True
-
-        response = self.client.chat.completions.create(**payload)
-
-        def gen():
-            for chunk in response:
-                delta = chunk.choices[0].delta.content
-                if delta:
-                    yield delta
-
-        return gen()
-    
-    @openai_retry(logger)
-    def create(self, request):
-        payload = self.build_payload(request)
-        return self.client.chat.completions.create(**payload)
-
-    def extract_text(self, response):
-        output_text = response.choices[0].message.content
-        return output_text.strip() if output_text is not None else output_text

@@ -10,18 +10,17 @@ from huggingface_hub import InferenceClient
 
 class HuggingFaceEmbeddingProvider(BaseEmbeddingProvider):
 
-    def __init__(self, client: InferenceClient, model: str):
+    def __init__(self, client: InferenceClient, model: str, retrieval_instruction: str):
         self.client = client
         self.model = model
+        self.retrieval_instruction = retrieval_instruction
 
     @huggingface_retry(logger)
-    def embed_query(self, query: str, retrieval_instruction: str | None = None, normalize: bool = True):
+    def embed_query(self, query: str, normalize: bool = True):
         logger.info(f"Query embedding started")
 
-        retrieval_instruction = retrieval_instruction or settings.RETRIEVAL_INSTRUCTION
-
         embedding = self.client.feature_extraction(
-            retrieval_instruction + query,
+            self.retrieval_instruction + query,
             model=self.model
         )
 

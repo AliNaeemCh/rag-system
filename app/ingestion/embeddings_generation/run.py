@@ -7,6 +7,7 @@ from app.infra.embeddings.base import BaseEmbeddingProvider
 from app.infra.embeddings.sentence_transformer import SentenceTransformerEmbeddingProvider
 from app.infra.vector_stores.pgvector_store.store import PgVectorStore
 from app.ingestion.embeddings_generation.config import EmbeddingPipelineConfig
+from app.infra.db.pool import db_pool
 
 import logging
 logger = logging.getLogger("app.ingestion.embeddings_generation.run")
@@ -26,7 +27,7 @@ def run_pipeline(config: EmbeddingPipelineConfig):
         embedding_model = SentenceTransformerEmbeddingProvider(model_path=settings.LOCAL_EMBEDDING_MODEL_PATH)
 
         vector_store = PgVectorStore(
-            connection_string=settings.POSTGRES_URL,
+            db_pool=db_pool,
             embedding_dim=config.embedding_dim,
             m=config.m,
             ef_construction=config.ef_construction
@@ -52,6 +53,7 @@ def run_pipeline(config: EmbeddingPipelineConfig):
                     break
                 else:
                     print("Invalid input. Try again!")
+
             logger.info(f"Starting Embedding Generation... | File = {config.chunks_jsonl_path}")
         
         else:
@@ -152,7 +154,6 @@ def run_pipeline(config: EmbeddingPipelineConfig):
             pbar.refresh()
 
         executor.shutdown(wait=True)
-        vector_store.close_conn()
 
         logger.info(f"Embedding Generation Completed | Total Docs = {total} | Total Batches = {total_batches}")
 

@@ -9,7 +9,7 @@ from typing import Union, List
 class BaseEmbeddingProvider(ABC):
 
     @abstractmethod
-    def embed_query(self, query: str, retrieval_instruction: str | None = None, normalize: bool = True):
+    def embed_query(self, query: str, normalize: bool = True):
         pass
 
     @abstractmethod

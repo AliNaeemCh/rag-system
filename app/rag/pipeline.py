@@ -5,6 +5,7 @@ from app.rag.reranker import Reranker
 from app.rag.generator import Generator
 from app.core.config import settings
 from app.rag.config import ResponseMode
+from app.infra.usage_tracking.tracker import usage_tracker
 
 import logging
 logger = logging.getLogger("app.rag.pipeline")
@@ -21,7 +22,16 @@ class RAGPipeline:
     def run(self, user_message: str, session_id: str, stream: bool = True, eval_mode: bool = False, response_mode: ResponseMode = ResponseMode.ADVANCED) -> str:
         try:
             logger.info(f"User message received: {user_message}")
-            
+
+            # Usage tracking
+            model_names = [self.generator.llm.model_name]
+            if response_mode != ResponseMode.FAST:
+                model_names.append(self.rewriter.llm.model_name)
+            usage_exceeded = usage_tracker.usage_exceeded(model_names=model_names)
+            logger.info("Usage status: under limit")
+            if usage_exceeded:
+                raise Exception ("Usage limit exceeded!")
+
             if not eval_mode:
                 # Get chat history
                 chat_history = self.chat_history.get_recent(session_id)
@@ -113,7 +123,7 @@ class RAGPipeline:
 
                 return response
 
-        except Exception:
+        except Exception as e:
             if not eval_mode:
                 raise
-            logger.exception("Error in RAG pipeline")
+            logger.exception(f"Error in RAG pipeline: {e}")

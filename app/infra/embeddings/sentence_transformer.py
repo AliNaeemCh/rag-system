@@ -24,7 +24,6 @@ class SentenceTransformerEmbeddingProvider(BaseEmbeddingProvider):
     def embed_query(
         self,
         query: str,
-        retrieval_instruction: str | None = None,
         normalize: bool = True
     ):
         """
