@@ -4,9 +4,11 @@ logger.info("Loading file...")
 
 from contextlib import contextmanager
 from psycopg2.pool import SimpleConnectionPool
+from psycopg2.extensions import connection
+from typing import Iterator
 
 @contextmanager
-def get_connection(pool: SimpleConnectionPool):
+def get_connection(pool: SimpleConnectionPool) -> Iterator[connection]:
     conn = pool.getconn()
     try:
         yield conn

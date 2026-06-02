@@ -8,12 +8,12 @@ from psycopg2.pool import SimpleConnectionPool
 
 db_pool = SimpleConnectionPool(
     minconn=1,
-    maxconn=10,
+    maxconn=settings.DB_POOL_MAX_CONNS,
     dsn=settings.DB_URL
 )
 
 usage_tracker_db_pool = SimpleConnectionPool(
     minconn=1,
-    maxconn=10,
+    maxconn=settings.USAGE_TRACKER_DB_POOL_MAX_CONNS,
     dsn=settings.USAGE_TRACKER_DB_URL
 )

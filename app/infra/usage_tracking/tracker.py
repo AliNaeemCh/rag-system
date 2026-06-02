@@ -3,6 +3,7 @@ from app.infra.usage_tracking.buckets import get_bucket, BUCKET_TO_TOKEN_LIMIT
 from app.infra.db.session import get_connection
 from app.infra.db.pool import usage_tracker_db_pool
 from app.infra.db.retry import db_retry
+from app.core.config import settings
 
 import logging
 logger = logging.getLogger("app.infra.usage_tracking.tracker")
@@ -16,7 +17,7 @@ class UsageTracker:
         self.db_pool = db_pool
         self._ensure_schema()
 
-    @db_retry()
+    @db_retry(retries=settings.USAGE_TRACKER_DB_POOL_MAX_CONNS)
     def _ensure_schema(self):
         with get_connection(self.db_pool) as conn:
             with conn.cursor() as cur:
@@ -41,15 +42,15 @@ class UsageTracker:
                     """)
                     return cur.fetchone()
         
-        row = db_retry()(_db_op)()
+        row = db_retry(retries=settings.USAGE_TRACKER_DB_POOL_MAX_CONNS)(_db_op)()
 
         if not row or row[column] is None:
             return 0
 
         return int(row[column])
 
-    @db_retry()
-    def get_current_usage(self) -> dict:
+    @db_retry(retries=settings.USAGE_TRACKER_DB_POOL_MAX_CONNS)
+    def _get_current_usage(self) -> dict:
         with get_connection(self.db_pool) as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute("""
@@ -65,26 +66,25 @@ class UsageTracker:
         }
 
     def increment(self, model_name: str, tokens: int):
+        def _db_op():
+            with get_connection(self.db_pool) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(f"""
+                        INSERT INTO token_usage_daily(day, {column})
+                        VALUES ((timezone('UTC', now()))::date, %s)
+                        ON CONFLICT (day)
+                        DO UPDATE SET
+                            {column} = token_usage_daily.{column} + EXCLUDED.{column}
+                    """, (tokens,))
         try:
             bucket = get_bucket(model_name=model_name)
             column = self._get_bucket_column(bucket=bucket)
-            def _db_op():
-                with get_connection(self.db_pool) as conn:
-                    with conn.cursor() as cur:
-                        cur.execute(f"""
-                            INSERT INTO token_usage_daily(day, {column})
-                            VALUES ((timezone('UTC', now()))::date, %s)
-                            ON CONFLICT (day)
-                            DO UPDATE SET
-                                {column} = token_usage_daily.{column} + EXCLUDED.{column}
-                        """, (tokens,))
-
-            db_retry()(_db_op)()
+            db_retry(retries=settings.USAGE_TRACKER_DB_POOL_MAX_CONNS)(_db_op)()
         except Exception as e:
             logger.exception(f"Usage increment failed. Error: {e}")
     
     def usage_exceeded(self, model_names: list[str], safety_margin_tokens: int = 5000) -> bool:
-        usage = self.get_current_usage()
+        usage = self._get_current_usage()
 
         seen_buckets = set()
 
@@ -102,18 +102,19 @@ class UsageTracker:
 
         return False
     
-    @db_retry()
     def delete_older_token_usage(self):
-        try:
+        def _db_op():
             with get_connection(self.db_pool) as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
                         DELETE FROM token_usage_daily
                         WHERE day < (timezone('UTC', now()))::date
                     """)
+        try:
+            db_retry(retries=settings.USAGE_TRACKER_DB_POOL_MAX_CONNS)(_db_op)()
         except Exception as e:
             logger.exception(f"Older token usage deletion failed. Error: {e}")
-    
+
     def _get_bucket_column(self, bucket: Bucket):
         return (
             "small_bucket_tokens"

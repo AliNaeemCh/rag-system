@@ -59,6 +59,7 @@ class OpenAIResponsesAdapter(OpenAIBaseAdapter):
         usage = getattr(response, "usage", None)
 
         if usage is None:
+            logger.warning("Usage not found in OpenAI responses API response")
             return {
                 "input_tokens": 0,
                 "output_tokens": 0,

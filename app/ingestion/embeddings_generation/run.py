@@ -43,16 +43,17 @@ def run_pipeline(config: EmbeddingPipelineConfig):
         total = 0
         total_batches = 0
         completed_batches = 0
-        last_processed_chunk_id = None
+        last_processed_chunk_id = vector_store.get_max_id()
 
         if not config.resume:
-            while True:
-                user_in = input("Warning: Previously saved documents (if any) will be deleted. Type 'confirm' to proceed: ")
-                if user_in == "confirm":
-                    vector_store.reset_schema()
-                    break
-                else:
-                    print("Invalid input. Try again!")
+            if last_processed_chunk_id > 0:
+                while True:
+                    user_in = input(f"\033[93mWarning:\033[0m Previously processed documents ({last_processed_chunk_id}) will be deleted. Type 'confirm' to proceed: ")
+                    if user_in == "confirm":
+                        vector_store.reset_schema()
+                        break
+                    else:
+                        print("Invalid input. Try again!")
 
             logger.info(f"Starting Embedding Generation... | File = {config.chunks_jsonl_path}")
         
@@ -66,18 +67,16 @@ def run_pipeline(config: EmbeddingPipelineConfig):
         # -------------------------
         for obj in load_jsonl(config.chunks_jsonl_path):
 
-            content = (obj.get("content") or "").strip()
             chunk_id = obj['chunk_id']
             if config.resume:
-                if last_processed_chunk_id is None:
-                    last_processed_chunk_id = vector_store.get_max_id()
-
                 if chunk_id <= last_processed_chunk_id:
                     total += 1
 
                     if chunk_id == last_processed_chunk_id:
                         completed_batches = math.ceil(total / config.batch_size)
                     continue
+
+            content = (obj.get("content") or "").strip()
 
             if not content:
                 continue

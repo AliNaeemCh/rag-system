@@ -2,6 +2,7 @@ from app.infra.vector_stores.base import BaseVectorStore
 from app.infra.vector_stores.pgvector_store.config import RetrievedDocument
 from app.infra.db.session import get_connection
 from app.infra.db.retry import db_retry
+from app.core.config import settings
 
 import logging
 logger = logging.getLogger("app.infra.vector_stores.pg_vector_store.store")
@@ -25,7 +26,7 @@ class PgVectorStore(BaseVectorStore):
         self.db_pool = db_pool
         self._ensure_schema()
 
-    @db_retry()
+    @db_retry(retries=settings.DB_POOL_MAX_CONNS)
     def _ensure_schema(self):
         with get_connection(self.db_pool) as conn:
             with conn.cursor() as cur:
@@ -58,7 +59,7 @@ class PgVectorStore(BaseVectorStore):
                     );
                 """)
     
-    @db_retry()
+    @db_retry(retries=settings.DB_POOL_MAX_CONNS)
     def reset_schema(self):
         with get_connection(self.db_pool) as conn:
             with conn.cursor() as cur:
@@ -100,7 +101,7 @@ class PgVectorStore(BaseVectorStore):
                         rows,
                     )
 
-        db_retry()(_db_op)()
+        db_retry(settings.DB_POOL_MAX_CONNS)(_db_op)()
 
     def similarity_search(
         self,
@@ -143,7 +144,7 @@ class PgVectorStore(BaseVectorStore):
                     cur.execute(sql, params)
                     return cur.fetchall()
 
-        rows = db_retry()(_db_op)()
+        rows = db_retry(settings.DB_POOL_MAX_CONNS)(_db_op)()
         
         logger.info("Similarity search completed")
 
@@ -157,7 +158,7 @@ class PgVectorStore(BaseVectorStore):
             for r in rows
         ]
     
-    @db_retry()
+    @db_retry(retries=settings.DB_POOL_MAX_CONNS)
     def delete(self, ids: int | list[int]) -> None:
         if isinstance(ids, int):
             ids = [ids]
@@ -169,7 +170,7 @@ class PgVectorStore(BaseVectorStore):
                     (ids,),
                 )
 
-    @db_retry()
+    @db_retry(retries=settings.DB_POOL_MAX_CONNS)
     def get_max_id(self):
         with get_connection(self.db_pool) as conn:
             with conn.cursor() as cur:

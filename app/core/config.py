@@ -81,12 +81,7 @@ class Settings(BaseSettings):
     REMOTE_DB_PORT: int
     REMOTE_DB_NAME: str
 
-    # - Usage tracker
-    USAGE_TRACKER_DB_USER: str
-    USAGE_TRACKER_DB_PASSWORD: str
-    USAGE_TRACKER_DB_HOST: str
-    USAGE_TRACKER_DB_PORT: int
-    USAGE_TRACKER_DB_NAME: str
+    DB_POOL_MAX_CONNS: int = Field(default=10, gt=0)
 
     @property
     def DB_URL(self) -> str:
@@ -106,6 +101,15 @@ class Settings(BaseSettings):
                 f"{self.REMOTE_DB_PORT}/"
                 f"{self.REMOTE_DB_NAME}"
             )
+        
+    # - Usage tracker
+    USAGE_TRACKER_DB_USER: str
+    USAGE_TRACKER_DB_PASSWORD: str
+    USAGE_TRACKER_DB_HOST: str
+    USAGE_TRACKER_DB_PORT: int
+    USAGE_TRACKER_DB_NAME: str
+
+    USAGE_TRACKER_DB_POOL_MAX_CONNS: int = Field(default=10, gt=0)
 
     @property
     def USAGE_TRACKER_DB_URL(self) -> str:
@@ -117,9 +121,16 @@ class Settings(BaseSettings):
             f"{self.USAGE_TRACKER_DB_NAME}"
         )
     
+    # Vector store
     PGVECTOR_HNSW_M: int = 16
     PGVECTOR_HNSW_EF_CONSTRUCTION: int = 64
     PGVECTOR_HNSW_EF_SEARCH: int = 40
+
+    # OpenSearch
+    OPENSEARCH_USERNAME: str
+    OPENSEARCH_PASSWORD: str
+    OPENSEARCH_HOST: str
+    OPENSEARCH_INDEX_NAME: str = "sys_annual_2025_rag"
 
     # RAG
     RETRIEVER_INITIAL_K: int = Field(default=20, ge=1, le=200)
@@ -139,7 +150,8 @@ class Settings(BaseSettings):
     OVERLAP_GRANULARITY: OverlapGranularity = OverlapGranularity.SENTENCE_BASED
     SEPARATE_H2s: bool = True
     CROSS_SECTION_OVERLAP: bool = False
-    CHUNKS_EMBEDDING_BATCH_SIZE: int = Field(default=1, ge=1)
+    CHUNKS_EMBEDDING_BATCH_SIZE: int = Field(default=1, gt=0)
+    CHUNKS_SEARCH_INDEX_BATCH_SIZE: int = Field(default=64, gt=0)
 
     # Prompts
     ENTITY_NAME: str = "Systems Limited"
