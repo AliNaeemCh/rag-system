@@ -212,7 +212,7 @@ if user_input:
             timeout=300
         ) as res:
             if res.status_code and res.status_code >= 400:
-                raise
+                raise Exception("Error from backend")
             for line in res.iter_lines(decode_unicode=True):
 
                 if not line:
@@ -239,12 +239,13 @@ if user_input:
                         break
 
                     elif event_type == "error":
-                        raise
+                        raise Exception(f"Error from backend. Event: {event}")
 
         # final render (remove cursor)
         placeholder.markdown(full_response)
 
-    except Exception:
+    except Exception as e:
+        print(e)
         full_response = "⚠️ Sorry, I couldn’t generate a response right now. Please try again."
         placeholder.markdown(full_response)
 

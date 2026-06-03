@@ -122,9 +122,9 @@ class Settings(BaseSettings):
         )
     
     # Vector store
-    PGVECTOR_HNSW_M: int = 16
-    PGVECTOR_HNSW_EF_CONSTRUCTION: int = 64
-    PGVECTOR_HNSW_EF_SEARCH: int = 40
+    HNSW_M: int = 16
+    HNSW_EF_CONSTRUCTION: int = 64
+    HNSW_EF_SEARCH: int = 40
 
     # OpenSearch
     OPENSEARCH_USERNAME: str
@@ -133,8 +133,10 @@ class Settings(BaseSettings):
     OPENSEARCH_INDEX_NAME: str = "sys_annual_2025_rag"
 
     # RAG
-    RETRIEVER_INITIAL_K: int = Field(default=20, ge=1, le=200)
-    TOP_K: int = Field(default=5, ge=1, le=50)
+    DENSE_TOP_K: int = Field(default=50, ge=1, le=100)
+    SPARSE_TOP_K: int = Field(default=30, ge=1, le=50)
+    FUSED_TOP_K: int = Field(default=20, ge=1, le=50)
+    FINAL_TOP_K: int = Field(default=5, ge=1, le=50)
 
     # Chat
     CHAT_HISTORY_MAX_PAIRS: int = Field(default=5, ge=1)
@@ -150,7 +152,7 @@ class Settings(BaseSettings):
     OVERLAP_GRANULARITY: OverlapGranularity = OverlapGranularity.SENTENCE_BASED
     SEPARATE_H2s: bool = True
     CROSS_SECTION_OVERLAP: bool = False
-    CHUNKS_EMBEDDING_BATCH_SIZE: int = Field(default=1, gt=0)
+    CHUNKS_EMBEDDING_BATCH_SIZE: int = Field(default=2, gt=0)
     CHUNKS_SEARCH_INDEX_BATCH_SIZE: int = Field(default=64, gt=0)
 
     # Prompts

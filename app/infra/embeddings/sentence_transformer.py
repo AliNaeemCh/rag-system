@@ -25,7 +25,7 @@ class SentenceTransformerEmbeddingProvider(BaseEmbeddingProvider):
         self,
         query: str,
         normalize: bool = True
-    ):
+    ) -> list[float]:
         """
         Embed a single query string.
         """
@@ -47,7 +47,7 @@ class SentenceTransformerEmbeddingProvider(BaseEmbeddingProvider):
         documents: list[str] | str,
         batch_size: int | None = None,
         normalize: bool = True
-    ):
+    ) -> list[list[float]]:
         """
         Embed one or multiple documents.
         """

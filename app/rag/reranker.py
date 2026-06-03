@@ -1,4 +1,4 @@
-from app.infra.vector_stores.pgvector_store.config import RetrievedDocument
+from app.models import RetrievedDocument
 
 import logging
 logger = logging.getLogger("rag.reranker")
@@ -11,7 +11,7 @@ class Reranker:
         self.top_k = top_k
         self.reranker_model = reranker_model
 
-    def rerank(self, query: str, docs: list[RetrievedDocument] | list[str]) -> list[RetrievedDocument]:
+    def rerank(self, query: str, docs: list[RetrievedDocument]) -> list[RetrievedDocument]:
         """
         1. Create query-document pairs
         2. Score documents using CrossEncoder
@@ -24,10 +24,9 @@ class Reranker:
         if not docs:
             logger.warning("No documents received for reranking")
             return []
-
         # 1. Create query-doc pairs
         pairs = [
-            (query, doc.content if isinstance(doc, RetrievedDocument) else doc)
+            (query, doc.content)
             for doc in docs
         ]
 
@@ -38,12 +37,16 @@ class Reranker:
 
         logger.debug(f"Reranker scores = {scores}")
 
-        # 3. Sorting
+        # 3. Attach reranker scores to docs
+        for i in scores:
+            docs[i].scores.reranker_score = scores[i]
+
+        # 4. Sorting
         sorted_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
         docs_sorted = [docs[i] for i in sorted_indices]
 
-        # 4. Preparing top-k reranked docs
-        reranked_docs = [doc for doc in docs_sorted[: self.top_k]]
+        # 5. Preparing top-k reranked docs
+        reranked_docs = [doc for doc in docs_sorted[:self.top_k]]
 
         logger.info(f"Reranking completed")
 

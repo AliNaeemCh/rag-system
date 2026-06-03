@@ -8,8 +8,7 @@ from pathlib import Path
 from dataclasses import dataclass
 
 @dataclass(slots=True)
-class SearchIndexPipelineConfig:
-    chunks_jsonl_path: Path
+class SearchIndexingPipelineConfig:
     index_name: str = settings.OPENSEARCH_INDEX_NAME
     batch_size: int = settings.CHUNKS_SEARCH_INDEX_BATCH_SIZE
     resume: bool = False

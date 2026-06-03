@@ -4,7 +4,7 @@ setup_logging()
 from app.core.utils import load_jsonl
 from app.core.config import settings
 from app.infra.search_engines.opensearch.store import OpenSearchStore
-from app.ingestion.search_index_generation.config import SearchIndexPipelineConfig
+from app.ingestion.search_indexing.opensearch.config import SearchIndexingPipelineConfig
 
 import logging
 logger = logging.getLogger("app.ingestion.search_index_generation.run")
@@ -12,8 +12,12 @@ logger.info("Loading file...")
 
 from tqdm import tqdm
 from opensearchpy import OpenSearch
+from pathlib import Path
 
-def run_pipeline(config: SearchIndexPipelineConfig):
+def run_pipeline(
+        config: SearchIndexingPipelineConfig,
+        chunks_jsonl_path: Path,
+        embeddings_jsonl_path: Path):
 
     try:
         logger.info("Initializing pipeline...")
@@ -26,7 +30,10 @@ def run_pipeline(config: SearchIndexPipelineConfig):
 
         opensearch_store = OpenSearchStore(
             client=client,
-            index_name=settings.OPENSEARCH_INDEX_NAME
+            index_name=settings.OPENSEARCH_INDEX_NAME,
+            embedding_dim=settings.EMBEDDING_DIMENSIONS,
+            m=settings.HNSW_M,
+            ef_construction=settings.HNSW_EF_CONSTRUCTION
         )
 
         batch = []
@@ -43,16 +50,22 @@ def run_pipeline(config: SearchIndexPipelineConfig):
                     else:
                         print("Invalid input. Try again!")
 
-            logger.info(f"Starting Search Index Generation... | File = {config.chunks_jsonl_path}")
+            logger.info(f"Starting Search Index Generation...")
         
         else:
-            logger.info(f"Resuming Search Index Generation... | File = {config.chunks_jsonl_path}")
+            logger.info(f"Resuming Search Index Generation...")
 
         pbar = tqdm(total=100)
 
-        for obj, progress in load_jsonl(config.chunks_jsonl_path, return_progress=True):
+        for (chunk_obj, progress), (emb_obj, _) in zip(
+            load_jsonl(chunks_jsonl_path, return_progress=True),
+            load_jsonl(embeddings_jsonl_path, return_progress=True)
+        ):
 
-            chunk_id = obj['chunk_id']
+            chunk_id = chunk_obj['chunk_id']
+
+            if chunk_id != emb_obj['chunk_id']:
+                raise Exception("Chunk and embedding objects are not aligned!")
 
             if config.resume:
                 if chunk_id <= last_processed_chunk_id:
@@ -64,14 +77,18 @@ def run_pipeline(config: SearchIndexPipelineConfig):
                     
                     continue
 
-            content = (obj.get("content") or "").strip()
+            content = (chunk_obj.get("content") or "").strip()
             if not content:
-                continue
+                raise Exception(f"Undefined content against chunk_id={chunk_id}")
+            
+            if not emb_obj.get("embedding"):
+                raise Exception(f"Undefined embedding against chunk_id={chunk_id}")
 
             batch.append({
-                "chunk_id": obj["chunk_id"],
-                "text": content,
-                "metadata": obj.get("metadata", {})
+                "chunk_id": chunk_id,
+                "content": content,
+                "embedding": emb_obj.get("embedding"),
+                "metadata": chunk_obj.get("metadata", {})
             })
 
             total += 1
@@ -91,13 +108,14 @@ def run_pipeline(config: SearchIndexPipelineConfig):
 
         logger.info(f"Search Index Generation Completed | Total Docs = {total}")
 
-    except Exception:
-        logger.exception("Search Index Generation Failed!")
+    except Exception as e:
+        logger.exception(f"Search Index Generation Failed! Error: {e}")
         return
 
-config = SearchIndexPipelineConfig(
-    chunks_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
-    resume=False
-)
+config = SearchIndexingPipelineConfig(resume=False)
 
-run_pipeline(config)
+run_pipeline(
+    config=config,
+    chunks_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
+    embeddings_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_embeddings.jsonl",
+)

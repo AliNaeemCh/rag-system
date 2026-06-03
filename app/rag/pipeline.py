@@ -6,6 +6,7 @@ from app.rag.generator import Generator
 from app.core.config import settings
 from app.rag.config import ResponseMode
 from app.infra.usage_tracking.tracker import usage_tracker
+from app.rag.utils import rrf_fusion
 
 import logging
 logger = logging.getLogger("app.rag.pipeline")
@@ -55,19 +56,26 @@ class RAGPipeline:
                 logger.debug(f"Rewritten message for retriever: {message_for_retriever}")
 
             # 4. Retrieve documents
-            docs = self.retriever.retrieve(message_for_retriever, ef_search=settings.PGVECTOR_HNSW_EF_SEARCH)
+            docs = self.retriever.retrieve(message_for_retriever, ef_search=settings.HNSW_EF_SEARCH)
+
+            # 5. Rank fusion
+            docs = rrf_fusion(
+                dense_docs=docs['dense_docs'],
+                sparse_docs=docs['sparse_docs'],
+                top_k=settings.FUSED_TOP_K
+            )
 
             logger.debug(f"Retrived docs are:\n{docs}")
 
-            top_ranked_docs = docs[:self.reranker.top_k]
+            final_top_docs = docs[:settings.FINAL_TOP_K]
 
             if response_mode == ResponseMode.ADVANCED:
-                # 5. Rerank documents
-                top_ranked_docs = self.reranker.rerank(rewritten_message, docs)
-                logger.debug(f"Top ranked docs are:\n{top_ranked_docs}")
+                # 6. Rerank documents
+                final_top_docs = self.reranker.rerank(rewritten_message, docs)
+                logger.debug(f"Top ranked docs are:\n{final_top_docs}")
 
             # 6. Build final context
-            retrieved_context = "\n---\n".join([doc.content for doc in top_ranked_docs])
+            retrieved_context = "\n---\n".join([doc.content for doc in final_top_docs])
 
             # 7. Generate answer
             logger.info("Calling generator LLM")

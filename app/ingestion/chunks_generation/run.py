@@ -26,16 +26,22 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
         sections_sentences = []
         metadata = []
         h_tags = ["<H1>", "<H2>"] if chunking_config.separate_h2s else ["<H1>"]
-        chunks_counter = 0
+        last_chunk = extract_last_jsonl_object(jsonl_path=output_path)
+        chunks_counter = last_chunk.get('chunk_id', 0)
 
         if chunking_config.resume:
-            last_chunk = extract_last_jsonl_object(jsonl_path=output_path)
-            if last_chunk:
+            if chunks_counter > 0:
                 logger.info("Chunking Resumed")
-                chunks_counter = last_chunk.get('chunk_id', 0)
             else:
                 logger.info("Chunking Started")
         else:
+            while True:
+                user_in = input(f"\033[93mWarning:\033[0m Previously processed documents ({chunks_counter}) will be deleted. Type 'confirm' to proceed: ")
+                if user_in == "confirm":
+                    reset_jsonl(output_path)
+                    break
+                else:
+                    print("Invalid input. Try again!")
             reset_jsonl(jsonl_path=output_path)
             last_chunk = None
             logger.info("Chunking Started")

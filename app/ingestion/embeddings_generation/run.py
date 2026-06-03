@@ -1,13 +1,11 @@
 from app.core.logger import setup_logging
 setup_logging()
 
-from app.core.utils import load_jsonl
+from app.core.utils import load_jsonl, extract_last_jsonl_object, reset_jsonl, write_jsonl
 from app.core.config import settings
 from app.infra.embeddings.base import BaseEmbeddingProvider
 from app.infra.embeddings.sentence_transformer import SentenceTransformerEmbeddingProvider
-from app.infra.vector_stores.pgvector_store.store import PgVectorStore
 from app.ingestion.embeddings_generation.config import EmbeddingPipelineConfig
-from app.infra.db.pool import db_pool
 
 import logging
 logger = logging.getLogger("app.ingestion.embeddings_generation.run")
@@ -16,56 +14,49 @@ logger.info("Loading file...")
 import math
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 def embed_batch(embedding_model: BaseEmbeddingProvider, texts: list[str], normalize: bool = True, batch_size: int | None = None):
     return embedding_model.embed_documents(texts, normalize=normalize, batch_size = batch_size)
 
-def run_pipeline(config: EmbeddingPipelineConfig):
+def run_pipeline(config: EmbeddingPipelineConfig, input_path: Path, output_path: Path):
     try:
         logger.info("Initializing pipeline...")
 
         embedding_model = SentenceTransformerEmbeddingProvider(model_path=settings.LOCAL_EMBEDDING_MODEL_PATH)
-
-        vector_store = PgVectorStore(
-            db_pool=db_pool,
-            embedding_dim=config.embedding_dim,
-            m=config.m,
-            ef_construction=config.ef_construction
-        )
 
         # Thread pool for API calls
         executor = ThreadPoolExecutor(max_workers=config.num_workers)
         futures = []
 
         batch_texts = []
-        batch_metas = []
         batch_chunk_ids = []
         total = 0
         total_batches = 0
         completed_batches = 0
-        last_processed_chunk_id = vector_store.get_max_id()
+        last_processed_chunk_id = extract_last_jsonl_object(output_path).get("chunk_id", 0)
 
         if not config.resume:
             if last_processed_chunk_id > 0:
                 while True:
                     user_in = input(f"\033[93mWarning:\033[0m Previously processed documents ({last_processed_chunk_id}) will be deleted. Type 'confirm' to proceed: ")
                     if user_in == "confirm":
-                        vector_store.reset_schema()
+                        reset_jsonl(output_path)
                         break
                     else:
                         print("Invalid input. Try again!")
 
-            logger.info(f"Starting Embedding Generation... | File = {config.chunks_jsonl_path}")
+            logger.info(f"Starting Embedding Generation... | File = {input_path}")
         
         else:
-            logger.info(f"Resuming Embedding Generation... | File = {config.chunks_jsonl_path}")
+            logger.info(f"Resuming Embedding Generation... | File = {input_path}")
 
         pbar = tqdm(total=100)
 
         # -------------------------
         # STREAM + BATCH + SUBMIT
         # -------------------------
-        for obj in load_jsonl(config.chunks_jsonl_path):
+        for obj in load_jsonl(input_path):
 
             chunk_id = obj['chunk_id']
             if config.resume:
@@ -73,7 +64,7 @@ def run_pipeline(config: EmbeddingPipelineConfig):
                     total += 1
 
                     if chunk_id == last_processed_chunk_id:
-                        completed_batches = math.ceil(total / config.batch_size)
+                        total_batches = completed_batches = math.ceil(total / config.batch_size)
                     continue
 
             content = (obj.get("content") or "").strip()
@@ -82,7 +73,6 @@ def run_pipeline(config: EmbeddingPipelineConfig):
                 continue
 
             batch_texts.append(content)
-            batch_metas.append(obj.get("metadata", {}))
             batch_chunk_ids.append(chunk_id)
             total += 1
 
@@ -98,12 +88,10 @@ def run_pipeline(config: EmbeddingPipelineConfig):
                 )
                 # store metadata aligned with this batch
                 futures[-1]._chunk_ids = batch_chunk_ids.copy()
-                futures[-1]._texts = batch_texts.copy()
-                futures[-1]._metas = batch_metas.copy()
+
                 total_batches += 1
 
                 batch_texts.clear()
-                batch_metas.clear()
                 batch_chunk_ids.clear()
 
         # -------------------------
@@ -120,33 +108,33 @@ def run_pipeline(config: EmbeddingPipelineConfig):
             )
             futures[-1]._chunk_ids = batch_chunk_ids.copy()
             futures[-1]._texts = batch_texts.copy()
-            futures[-1]._metas = batch_metas.copy()
             total_batches += 1
+
         total_batches = total_batches or completed_batches
         pbar.n = int((completed_batches / total_batches) * 100)
         pbar.refresh()
+
         # -------------------------
         # COLLECT RESULTS + WRITE
         # -------------------------
         for future in futures:  # Preserves order
-            chunk_ids = future._chunk_ids
-            texts = future._texts
-            metas = future._metas
+
             embeddings = future.result()
 
             if not embeddings:
-                continue
+                raise Exception("Undefined embedding(s)")
 
-            # normalize shape if API returns flat list
-            if isinstance(embeddings[0], float):
-                embeddings = [embeddings]
+            objects = []
 
-            vector_store.add_documents(
-                chunk_ids=chunk_ids,
-                texts=texts,
-                embeddings=embeddings,
-                metadatas=metas,
-            )
+            for i in range(len(future._chunk_ids)):
+                objects.append(
+                    {
+                        "chunk_id": future._chunk_ids[i],
+                        "embedding": embeddings[i]
+                    }
+                )
+            
+            write_jsonl(objects, output_path)
 
             completed_batches += 1
             pbar.n = int((completed_batches / total_batches) * 100)
@@ -156,13 +144,14 @@ def run_pipeline(config: EmbeddingPipelineConfig):
 
         logger.info(f"Embedding Generation Completed | Total Docs = {total} | Total Batches = {total_batches}")
 
-    except Exception:
-        logger.exception("Embedding Generation Failed! Please resume the process manually")
+    except Exception as e:
+        logger.exception(f"Embedding Generation Failed! Error: {e}")
         return
 
-config = EmbeddingPipelineConfig(
-    chunks_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
-    resume = False
-)
+config = EmbeddingPipelineConfig(resume = True)
 
-run_pipeline(config)
+run_pipeline(
+    config=config,
+    input_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
+    output_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_embeddings.jsonl",
+)

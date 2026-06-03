@@ -263,19 +263,19 @@ def crossing_index(running_sums, target):
 
     return -1
 
-def extract_last_jsonl_object(jsonl_path: Path) -> int | None:
+def extract_last_jsonl_object(jsonl_path: Path) -> dict:
     """
     Returns only the last JSONL object
     """
 
     if not jsonl_path.exists():
-        return None
+        return {}
 
     with open(jsonl_path, "rb") as f:
         f.seek(0, 2)  # move to end of file
 
         if f.tell() == 0:
-            return None
+            return {}
 
         buffer = bytearray()
 
@@ -294,7 +294,7 @@ def extract_last_jsonl_object(jsonl_path: Path) -> int | None:
         last_line = buffer[::-1].decode("utf-8").strip()
 
     if not last_line:
-        return None
+        return {}
 
     object = json.loads(last_line)
 

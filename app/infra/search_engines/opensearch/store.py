@@ -1,20 +1,20 @@
+from app.models import RetrievedDocument, ScoreBreakdown, RetrievalType
+
+import logging
+logger = logging.getLogger("app.infra.search_engines.opensearch.store")
+logger.info("Loading file...")
+
 from opensearchpy import OpenSearch, helpers
-import copy
 
 class OpenSearchStore:
-    """
-    OpenSearch used ONLY as:
-    - BM25 inverted index
-    - metadata filter engine
-    - chunk_id retrieval pointer system
-
-    Raw text is fetched from an external store.
-    """
 
     def __init__(
         self,
         client: OpenSearch,
         index_name: str,
+        embedding_dim: int,
+        m: int,
+        ef_construction: int
     ):
         """
         external_fetch_fn:
@@ -22,6 +22,9 @@ class OpenSearchStore:
         """
         self.client = client
         self.index = index_name
+        self.embedding_dim = embedding_dim
+        self.m = m
+        self.ef_construction = ef_construction
 
         self._ensure_index()
 
@@ -36,17 +39,42 @@ class OpenSearchStore:
             "settings": {
                 "index": {
                     "number_of_shards": 1,
-                    "number_of_replicas": 0
+                    "number_of_replicas": 0,
+
+                    # Enable k-NN search at index level
+                    "knn": True
                 }
             },
-            'mappings': {
+            "mappings": {
                 "_source": {
-                    "enabled": False    # Doesn't store the raw doc data
+                    "enabled": True
                 },
                 "properties": {
-                    "chunk_id": {"type": "integer"},
-                    "text": {"type": "text"},
-                    "metadata": {"type": "object", "dynamic": True}
+                    "chunk_id": {
+                        "type": "integer"
+                    },
+                    "content": {
+                        "type": "text"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "dynamic": True
+                    },
+                    "embedding": {
+                        "type": "knn_vector",
+                        "dimension": self.embedding_dim,
+
+                        # HNSW configuration
+                        "method": {
+                            "name": "hnsw",
+                            "space_type": "cosinesimil",
+                            "engine": "lucene",
+                            "parameters": {
+                                "m": self.m,
+                                "ef_construction": self.ef_construction
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -56,15 +84,16 @@ class OpenSearchStore:
     # -------------------------
     # ADD SINGLE DOCUMENT
     # -------------------------
-    def add_chunk(self, chunk_id: str, text: str, metadata: dict | None = None):
+    def add_chunk(self, chunk_id: str, content: str, embedding: list[float], metadata: dict | None = None):
 
         if metadata is None:
             metadata = {}
 
         doc = {
             "chunk_id": chunk_id,
-            "text": text,
-            "metadata": metadata
+            "content": content,
+            "metadata": metadata,
+            "embedding": embedding
         }
 
         self.client.index(
@@ -87,33 +116,101 @@ class OpenSearchStore:
                 "_id": chunk["chunk_id"],
                 "_source": {
                     "chunk_id": chunk["chunk_id"],
-                    "text": chunk["text"],
+                    "content": chunk["content"],
+                    "embedding": chunk['embedding'],
                     "metadata": chunk.get("metadata", {})
                 }
             })
 
         helpers.bulk(self.client, actions)
 
-    # -------------------------
-    # BM25 SEARCH + METADATA FILTER
-    # -------------------------
-    def search(
+    def similarity_search(
         self,
-        query: str,
-        k: int = 5,
+        query_embedding: list[float],
+        top_k: int,
+        ef_search: int,
         filters: dict | None = None
-    ):
+    ) -> list[RetrievedDocument]:
         """
         Returns:
         - chunk_id
         - score
-        - raw text (fetched externally)
+        - content
+        - metadata
+        """
+
+        filter_clauses = []
+
+        if filters:
+            for key, value in filters.items():
+                filter_clauses.append({
+                    "term": {
+                        f"metadata.{key}": value
+                    }
+                })
+
+        body = {
+            "size": top_k,
+            "query": {
+                "knn": {
+                    "embedding": {
+                        "vector": query_embedding,
+                        "k": top_k,
+                        "method_parameters": {
+                            "ef_search": ef_search
+                        },
+                        "filter": {
+                            "bool": {
+                                "filter": filter_clauses
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        response = self.client.search(
+            index=self.index,
+            body=body
+        )
+
+        results = []
+
+        for hit in response["hits"]["hits"]:
+            chunk_id = hit["_source"]["chunk_id"]
+
+            results.append(
+                RetrievedDocument(
+                    id=chunk_id,
+                    content=hit["_source"]["content"],
+                    metadata=hit["_source"]["metadata"],
+                    retrieval_type=RetrievalType.DENSE,
+                    scores=ScoreBreakdown(retrieval_score=hit["_score"])
+                )
+            )
+
+        return results
+
+    # -------------------------
+    # BM25 SEARCH + METADATA FILTER
+    # -------------------------
+    def keyword_search(
+        self,
+        query: str,
+        top_k: int,
+        filters: dict | None = None
+    ) -> list[RetrievedDocument]:
+        """
+        Returns:
+        - chunk_id
+        - score
+        - content
         - metadata
         """
 
         must_clause = {
             "match": {
-                "text": query
+                "content": query
             }
         }
 
@@ -128,7 +225,7 @@ class OpenSearchStore:
                 })
 
         body = {
-            "size": k,
+            "size": top_k,
             "query": {
                 "bool": {
                     "must": must_clause,
@@ -145,69 +242,19 @@ class OpenSearchStore:
         results = []
 
         for hit in response["hits"]["hits"]:
-            chunk_id = hit["_id"] or hit["_source"].get("chunk_id")
+            chunk_id = hit["_source"]["chunk_id"]
 
-            results.append({
-                "chunk_id": chunk_id,
-                "score": hit["_score"],
-                "metadata": hit["_source"]["metadata"] if "_source" in hit and hit["_source"] else {}
-            })
+            results.append(
+                RetrievedDocument(
+                    id=chunk_id,
+                    content=hit["_source"]["content"],
+                    metadata=hit["_source"]["metadata"],
+                    retrieval_type=RetrievalType.SPARSE,
+                    scores=ScoreBreakdown(retrieval_score=hit["_score"])
+                )
+            )
 
         return results
-
-    # -------------------------
-    # GET ONLY IDS
-    # -------------------------
-    def search_ids(
-        self,
-        query: str,
-        k: int = 5,
-        filters: dict | None = None
-    ):
-        """
-        Lightweight version: no external fetch
-        Useful for reranking pipelines
-        """
-
-        must_clause = {
-            "match": {
-                "text": query
-            }
-        }
-
-        filter_clauses = []
-
-        if filters:
-            for key, value in filters.items():
-                filter_clauses.append({
-                    "term": {
-                        f"metadata.{key}": value
-                    }
-                })
-
-        body = {
-            "size": k,
-            "_source": False,  # extra safety
-            "query": {
-                "bool": {
-                    "must": must_clause,
-                    "filter": filter_clauses
-                }
-            }
-        }
-
-        response = self.client.search(
-            index=self.index,
-            body=body
-        )
-
-        return [
-            {
-                "chunk_id": hit["_id"],
-                "score": hit["_score"]
-            }
-            for hit in response["hits"]["hits"]
-        ]
 
     def get_max_chunk_id(self) -> int:
         """

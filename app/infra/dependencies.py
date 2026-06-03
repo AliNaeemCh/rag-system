@@ -38,10 +38,6 @@ gemini_openai_client = create_openai_client(api_key=settings.GEMINI_API_KEY, bas
 # ML models
 reranker_model = CrossEncoder(settings.RERANKER_MODEL_PATH)
 
-# DBs
-vector_store = PgVectorStore(db_pool=db_pool, embedding_dim=settings.EMBEDDING_DIMENSIONS,
-                             m=settings.PGVECTOR_HNSW_M, ef_construction=settings.PGVECTOR_HNSW_EF_CONSTRUCTION)
-
 # OpenSearch
 opensearch_client = create_opensearch_client(host=settings.OPENSEARCH_HOST,
                                              username=settings.OPENSEARCH_USERNAME,
@@ -49,15 +45,22 @@ opensearch_client = create_opensearch_client(host=settings.OPENSEARCH_HOST,
 
 # RAG pipeline
 logger.info("Loading RAG pipeline")
+
 llm_generator = OpenAIEngine(model_name=settings.GENERATOR_MODEL, client=openai_client, usage_tracker=usage_tracker)
 llm_rewriter = OpenAIEngine(model_name=settings.REWRITER_MODEL, client=openai_client, usage_tracker=usage_tracker)
 embedding_model = SentenceTransformerEmbeddingProvider(model_path=settings.LOCAL_EMBEDDING_MODEL_PATH)
-opensearch_store = OpenSearchStore(client=opensearch_client, index_name=settings.OPENSEARCH_INDEX_NAME)
+opensearch_store = OpenSearchStore(
+    client=opensearch_client,
+    index_name=settings.OPENSEARCH_INDEX_NAME,
+    embedding_dim=settings.EMBEDDING_DIMENSIONS,
+    m=settings.HNSW_M,
+    ef_construction=settings.HNSW_EF_CONSTRUCTION
+)
 
 def build_rag_pipeline():
     rewriter = MessageRewriter(llm=llm_rewriter, system_prompt=REWRITER_SYSTEM_PROMPT, output_schema=REWRITER_SCHEMA)
-    retriever = Retriever(embedding_model=embedding_model, vector_store=vector_store, top_k=settings.RETRIEVER_INITIAL_K)
-    reranker = Reranker(reranker_model=reranker_model, top_k=settings.TOP_K)
+    retriever = Retriever(embedding_model=embedding_model, retrieval_store=opensearch_store, dense_top_k=settings.DENSE_TOP_K, sparse_top_k=settings.SPARSE_TOP_K)
+    reranker = Reranker(reranker_model=reranker_model, top_k=settings.FINAL_TOP_K)
     generator = Generator(llm_generator, system_prompt=GENERATOR_SYSTEM_PROMPT)
 
     return RAGPipeline(
