@@ -1,5 +1,5 @@
 from app.rag.pipeline import RAGPipeline
-from app.infra.dependencies import get_rag_pipeline
+from app.infra.dependencies import build_rag_pipeline
 from app.rag.config import ResponseMode
 from app.rag.chat_history import chat_history
 from app.dependencies.auth import verify_key
@@ -34,7 +34,7 @@ class ChatResponse(BaseModel):
     ])
 async def chat_endpoint(
     request: ChatRequest,
-    pipeline: RAGPipeline = Depends(get_rag_pipeline),
+    pipeline: RAGPipeline = Depends(build_rag_pipeline),
 ):
     chat_history.cleanup()  # Cleans inactive sessions data
 
@@ -78,7 +78,7 @@ async def chat_endpoint(
             })}\n\n"
 
         except Exception as e:
-            logger.exception(f"Error in chat endpoint: {e}")
+            logger.exception(f"Error in chat endpoint.")
 
             yield f"data: {json.dumps({
                 'type': 'error',

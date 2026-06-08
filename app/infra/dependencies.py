@@ -8,19 +8,17 @@ from app.infra.embeddings.sentence_transformer import SentenceTransformerEmbeddi
 from app.prompts.rag import GENERATOR_SYSTEM_PROMPT, REWRITER_SYSTEM_PROMPT, REWRITER_SCHEMA
 from app.rag.chat_history import chat_history
 from app.core.config import settings
-from app.infra.vector_stores.pgvector_store.store import PgVectorStore
-from app.infra.db.pool import db_pool
 from app.infra.usage_tracking.tracker import usage_tracker
-from app.infra.search_engines.opensearch.store import OpenSearchStore
+from app.infra.retrieval.opensearch.store import OpenSearchStore
 
 import logging
 logger = logging.getLogger("app.infra.dependencies")
 logger.info("Loading file...")
 
 from openai import OpenAI
-from sentence_transformers import CrossEncoder
 from huggingface_hub import InferenceClient
 from opensearchpy import OpenSearch
+from pathlib import Path
 
 def create_openai_client(api_key: str, base_url: str | None = None):
     return OpenAI(api_key=api_key, base_url=base_url)
@@ -36,7 +34,13 @@ openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY_SHARING)
 gemini_openai_client = create_openai_client(api_key=settings.GEMINI_API_KEY, base_url=settings.GEMINI_OPENAI_BASE_URL)
 
 # ML models
-reranker_model = CrossEncoder(settings.RERANKER_MODEL_PATH)
+def get_reranker_model(model_path: Path):
+    from sentence_transformers import CrossEncoder
+    return CrossEncoder(model_path)
+
+def get_embedding_model(model_path: Path, device: str | None = None):
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer(str(model_path), device=device)
 
 # OpenSearch
 opensearch_client = create_opensearch_client(host=settings.OPENSEARCH_HOST,
@@ -46,9 +50,8 @@ opensearch_client = create_opensearch_client(host=settings.OPENSEARCH_HOST,
 # RAG pipeline
 logger.info("Loading RAG pipeline")
 
-llm_generator = OpenAIEngine(model_name=settings.GENERATOR_MODEL, client=openai_client, usage_tracker=usage_tracker)
-llm_rewriter = OpenAIEngine(model_name=settings.REWRITER_MODEL, client=openai_client, usage_tracker=usage_tracker)
-embedding_model = SentenceTransformerEmbeddingProvider(model_path=settings.LOCAL_EMBEDDING_MODEL_PATH)
+llm_generator = OpenAIEngine(model_name=settings.GENERATOR_MODEL, client=openai_client, usage_tracker=usage_tracker, check_usage=False)
+llm_rewriter = OpenAIEngine(model_name=settings.REWRITER_MODEL, client=openai_client, usage_tracker=usage_tracker, check_usage=False)
 opensearch_store = OpenSearchStore(
     client=opensearch_client,
     index_name=settings.OPENSEARCH_INDEX_NAME,
@@ -58,8 +61,11 @@ opensearch_store = OpenSearchStore(
 )
 
 def build_rag_pipeline():
+    reranker_model = get_reranker_model(settings.RERANKER_MODEL_PATH)
+    embedding_model = get_embedding_model(settings.LOCAL_EMBEDDING_MODEL_PATH)
+    embedding_provider = SentenceTransformerEmbeddingProvider(model=embedding_model)
     rewriter = MessageRewriter(llm=llm_rewriter, system_prompt=REWRITER_SYSTEM_PROMPT, output_schema=REWRITER_SCHEMA)
-    retriever = Retriever(embedding_model=embedding_model, retrieval_store=opensearch_store, dense_top_k=settings.DENSE_TOP_K, sparse_top_k=settings.SPARSE_TOP_K)
+    retriever = Retriever(embedding_provider=embedding_provider, retrieval_store=opensearch_store, dense_top_k=settings.DENSE_TOP_K, sparse_top_k=settings.SPARSE_TOP_K)
     reranker = Reranker(reranker_model=reranker_model, top_k=settings.FINAL_TOP_K)
     generator = Generator(llm_generator, system_prompt=GENERATOR_SYSTEM_PROMPT)
 
@@ -70,8 +76,3 @@ def build_rag_pipeline():
         reranker=reranker,
         generator=generator
     )
-
-rag_pipeline = build_rag_pipeline()
-
-def get_rag_pipeline():
-    return rag_pipeline

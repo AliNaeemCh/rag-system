@@ -8,6 +8,7 @@ import json
 from collections import defaultdict
 from typing import Iterator
 import os
+import pickle
 
 def reset_jsonl(jsonl_path: Path):
     """
@@ -72,7 +73,7 @@ def load_jsonl(path: Path, return_progress=False) -> Iterator[dict | tuple[dict,
 
 def write_json(data: dict | list[dict], output_path: Path):
     """
-    Writes structured records to a JSON file (not JSONL).
+    Writes structured records to a JSON file.
     """
 
     # Normalize to list
@@ -91,23 +92,6 @@ def write_json(data: dict | list[dict], output_path: Path):
             ensure_ascii=False,
             indent=2
         )
-
-def reset_json(json_path: Path):
-    """
-    Ensures the JSON file is initialized and ready for fresh writing.
-
-    - Creates parent directories if needed
-    - Creates the file if it doesn't exist
-    - Resets it to an empty JSON array
-    """
-
-    json_path.parent.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump([], f)
 
 def find_positions(text: str, pattern: str | list[str] | re.Pattern, find_first=False) -> list[int] | int | None:
     """
@@ -299,3 +283,67 @@ def extract_last_jsonl_object(jsonl_path: Path) -> dict:
     object = json.loads(last_line)
 
     return object
+
+def save_pickle(obj, file_path: Path) -> None:
+    """
+    Save any Python object to a pickle file.
+    """
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(file_path, "wb") as f:
+        pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def load_pickle(file_path: Path):
+    """
+    Load and return a Python object from a pickle file.
+    Returns None if the file does not exist.
+    """
+    if not file_path.exists():
+        return None
+
+    with open(file_path, "rb") as f:
+        return pickle.load(f)
+
+def build_jsonl_index(jsonl_path: Path, index_path: str) -> list[int]:
+    """
+    Builds an O(1) lookup index for a JSONL file.
+    Stores byte offset of each line in a pickle file.
+    """
+    offsets = []
+    current_offset = 0
+
+    with open(jsonl_path, "rb") as f:
+        for line in f:
+            offsets.append(current_offset)
+            current_offset += len(line)
+    
+    save_pickle(offsets, file_path=index_path)
+
+    return offsets
+
+def get_jsonl_object(jsonl_path: Path, index: list[int], line_number: int, return_dict: bool = True) -> dict | str:
+    """
+    1-based line retrieval from JSONL using byte offset index.
+
+    Args:
+        jsonl_path: path to JSONL file
+        index: list of byte offsets
+        line_number: 1-based line number
+        return_dict: if True, return parsed JSON (dict/list)
+                     if False, return raw string
+
+    Returns:
+        dict/list if return_dict=True, else str
+    """
+    if line_number < 1:
+        raise ValueError("line_number must be >= 1")
+
+    with open(jsonl_path, "rb") as f:
+        f.seek(index[line_number - 1])
+        line = f.readline().decode("utf-8").strip()
+
+    if not return_dict:
+        return line
+
+    return json.loads(line)

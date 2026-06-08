@@ -6,7 +6,7 @@ from app.rag.generator import Generator
 from app.core.config import settings
 from app.rag.config import ResponseMode
 from app.infra.usage_tracking.tracker import usage_tracker
-from app.rag.utils import rrf_fusion
+from app.rag.utils import reciprocal_rank_fusion
 
 import logging
 logger = logging.getLogger("app.rag.pipeline")
@@ -58,21 +58,24 @@ class RAGPipeline:
             # 4. Retrieve documents
             docs = self.retriever.retrieve(message_for_retriever, ef_search=settings.HNSW_EF_SEARCH)
 
+            logger.debug(f"Retrived docs are:\n{docs}")
+
             # 5. Rank fusion
-            docs = rrf_fusion(
+            docs = reciprocal_rank_fusion(
                 dense_docs=docs['dense_docs'],
                 sparse_docs=docs['sparse_docs'],
                 top_k=settings.FUSED_TOP_K
             )
 
-            logger.debug(f"Retrived docs are:\n{docs}")
+            logger.debug(f"Reciprocal rank fused docs are:\n{docs}")
 
             final_top_docs = docs[:settings.FINAL_TOP_K]
 
             if response_mode == ResponseMode.ADVANCED:
                 # 6. Rerank documents
                 final_top_docs = self.reranker.rerank(rewritten_message, docs)
-                logger.debug(f"Top ranked docs are:\n{final_top_docs}")
+            
+            logger.debug(f"Top ranked docs are:\n{final_top_docs}")
 
             # 6. Build final context
             retrieved_context = "\n---\n".join([doc.content for doc in final_top_docs])
@@ -134,4 +137,4 @@ class RAGPipeline:
         except Exception as e:
             if not eval_mode:
                 raise
-            logger.exception(f"Error in RAG pipeline: {e}")
+            logger.exception(f"Error in RAG pipeline.")

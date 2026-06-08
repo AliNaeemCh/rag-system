@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     REWRITER_MODEL: str = "gpt-5.4-nano"
     PDF_TRANSCRIBER_MODEL: str = "gemini-3.1-flash-lite"
     PDF_TRANSCRIBER_FALLBACK_MODEL: str = "gemini-2.5-flash-lite"
+    EVAL_DATASET_GENERATOR_LLM: str = "gpt-5.4"
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     GEMINI_OPENAI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     HF_BASE_URL: str = "https://router.huggingface.co/v1"
@@ -65,42 +66,8 @@ class Settings(BaseSettings):
     RERANKER_MODEL_PATH: Path = BASE_DIR / "models" / "cross_encoder" / "ms-marco-MiniLM-L12-v2"
 
     # DBs
-    DATABASE: str
-
-    # - Local
-    LOCAL_DB_USER: str
-    LOCAL_DB_PASSWORD: str
-    LOCAL_DB_HOST: str
-    LOCAL_DB_PORT: int
-    LOCAL_DB_NAME: str
-
-    # - Remote
-    REMOTE_DB_USER: str
-    REMOTE_DB_PASSWORD: str
-    REMOTE_DB_HOST: str
-    REMOTE_DB_PORT: int
-    REMOTE_DB_NAME: str
 
     DB_POOL_MAX_CONNS: int = Field(default=10, gt=0)
-
-    @property
-    def DB_URL(self) -> str:
-        if self.DATABASE == 'local':
-            return (
-                f"postgresql://{self.LOCAL_DB_USER}:"
-                f"{self.LOCAL_DB_PASSWORD}@"
-                f"{self.LOCAL_DB_HOST}:"
-                f"{self.LOCAL_DB_PORT}/"
-                f"{self.LOCAL_DB_NAME}"
-            )
-        elif self.DATABASE == 'remote':
-            return (
-                f"postgresql://{self.REMOTE_DB_USER}:"
-                f"{self.REMOTE_DB_PASSWORD}@"
-                f"{self.REMOTE_DB_HOST}:"
-                f"{self.REMOTE_DB_PORT}/"
-                f"{self.REMOTE_DB_NAME}"
-            )
         
     # - Usage tracker
     USAGE_TRACKER_DB_USER: str
@@ -135,7 +102,7 @@ class Settings(BaseSettings):
     # RAG
     DENSE_TOP_K: int = Field(default=50, ge=1, le=100)
     SPARSE_TOP_K: int = Field(default=30, ge=1, le=50)
-    FUSED_TOP_K: int = Field(default=20, ge=1, le=50)
+    FUSED_TOP_K: int = Field(default=20, ge=1, le=40)
     FINAL_TOP_K: int = Field(default=5, ge=1, le=50)
 
     # Chat
@@ -145,6 +112,9 @@ class Settings(BaseSettings):
     # Data
     RAW_DATA_DIR: Path = BASE_DIR / "data" / "raw"
     PROCESSED_DATA_DIR: Path = BASE_DIR / "data" / "processed"
+
+    # Evaluation
+    EVAL_DATASET_DIR: Path = BASE_DIR / "evaluation" / "dataset"
 
     # Ingestion
     CHUNK_SIZE: int = Field(default=350, gt=0)

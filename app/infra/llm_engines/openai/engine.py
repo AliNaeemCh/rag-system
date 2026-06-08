@@ -16,8 +16,8 @@ class OpenAIAPI(str, Enum):
 
 class OpenAIEngine(BaseLLMEngine):
 
-    def __init__(self, model_name: str, client: OpenAI, api: OpenAIAPI = OpenAIAPI.RESPONSES, usage_tracker: UsageTracker | None = None):
-        super().__init__(model_name=model_name, usage_tracker=usage_tracker)
+    def __init__(self, model_name: str, client: OpenAI, api: OpenAIAPI = OpenAIAPI.RESPONSES, usage_tracker: UsageTracker | None = None, check_usage: bool = True):
+        super().__init__(model_name=model_name, usage_tracker=usage_tracker, check_usage=check_usage)
         self.client = client
 
         # choose adapter

@@ -5,21 +5,10 @@ import logging
 logger = logging.getLogger("app.infra.embeddings.sentence_transformer")
 logger.info("Loading file...")
 
-from sentence_transformers import SentenceTransformer
-from pathlib import Path
-
 class SentenceTransformerEmbeddingProvider(BaseEmbeddingProvider):
 
-    def __init__(
-        self,
-        model_path: Path,
-        device: str | None = None
-    ):
-        """
-        model_name: any SentenceTransformer-compatible model
-        device: 'cpu', 'cuda', or None (auto)
-        """
-        self.model = SentenceTransformer(str(model_path), device=device)
+    def __init__(self, model):
+        self.model = model
 
     def embed_query(
         self,

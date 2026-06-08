@@ -1,7 +1,7 @@
 from collections import defaultdict
-from app.models import RetrievedDocument
+from app.models import RetrievedDocument, RetrievalType
 
-def rrf_fusion(
+def reciprocal_rank_fusion(
     dense_docs: list[RetrievedDocument],
     sparse_docs: list[RetrievedDocument],
     top_k: int,
@@ -21,7 +21,14 @@ def rrf_fusion(
         for rank, doc in enumerate(docs):
             doc_id = doc.id
             scores[doc_id] += rrf_score(rank)
-            store[doc_id] = doc
+            if doc_id in store:
+                if doc.scores.dense_retrieval_score:
+                    store[doc_id].scores.dense_retrieval_score = doc.scores.dense_retrieval_score
+                else:
+                    store[doc_id].scores.sparse_retrieval_score = doc.scores.sparse_retrieval_score
+                store[doc_id].retrieval_type = RetrievalType.DENSE_SPARSE
+            else:
+                store[doc_id] = doc
 
     scores = defaultdict(float)
     store: dict[int, RetrievedDocument] = {}

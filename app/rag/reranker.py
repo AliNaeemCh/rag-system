@@ -4,10 +4,8 @@ import logging
 logger = logging.getLogger("rag.reranker")
 logger.info("Loading file...")
 
-from sentence_transformers import CrossEncoder
-
 class Reranker:
-    def __init__(self, reranker_model: CrossEncoder, top_k: int):
+    def __init__(self, reranker_model, top_k: int):
         self.top_k = top_k
         self.reranker_model = reranker_model
 
@@ -38,7 +36,7 @@ class Reranker:
         logger.debug(f"Reranker scores = {scores}")
 
         # 3. Attach reranker scores to docs
-        for i in scores:
+        for i in range(len(scores)):
             docs[i].scores.reranker_score = scores[i]
 
         # 4. Sorting

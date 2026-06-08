@@ -81,7 +81,7 @@ class UsageTracker:
             column = self._get_bucket_column(bucket=bucket)
             db_retry(retries=settings.USAGE_TRACKER_DB_POOL_MAX_CONNS)(_db_op)()
         except Exception as e:
-            logger.exception(f"Usage increment failed. Error: {e}")
+            logger.exception(f"Usage increment failed.")
     
     def usage_exceeded(self, model_names: list[str], safety_margin_tokens: int = 5000) -> bool:
         usage = self._get_current_usage()
@@ -113,7 +113,7 @@ class UsageTracker:
         try:
             db_retry(retries=settings.USAGE_TRACKER_DB_POOL_MAX_CONNS)(_db_op)()
         except Exception as e:
-            logger.exception(f"Older token usage deletion failed. Error: {e}")
+            logger.exception(f"Older token usage deletion failed.")
 
     def _get_bucket_column(self, bucket: Bucket):
         return (

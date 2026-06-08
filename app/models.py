@@ -9,10 +9,12 @@ from enum import Enum
 class RetrievalType(str, Enum):
     DENSE = "dense"
     SPARSE = "sparse"
+    DENSE_SPARSE = "dense_sparse"
 
 @dataclass(slots=True)
 class ScoreBreakdown:
-    retrieval_score: float | None = None
+    sparse_retrieval_score: float | None = None
+    dense_retrieval_score: float | None = None
     rrf_score: float | None = None
     reranker_score: float | None = None
 

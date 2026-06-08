@@ -10,9 +10,10 @@ from abc import ABC, abstractmethod
 
 
 class BaseLLMEngine(ABC):
-    def __init__(self, model_name: str, usage_tracker: UsageTracker | None = None):
+    def __init__(self, model_name: str, usage_tracker: UsageTracker | None = None, check_usage: bool = True):
         self.model_name = model_name
         self.usage_tracker = usage_tracker
+        self.check_usage = check_usage
 
     def generate(
         self,
@@ -27,6 +28,10 @@ class BaseLLMEngine(ABC):
         image_urls: str | list[str] | None = None,
         return_full_response: bool = False
     ):
+        if self.usage_tracker and self.check_usage:
+            if self.usage_tracker.usage_exceeded(model_names=[self.model_name]):
+                raise Exception("Usage limit exceeded!")
+            
         history = history or []
 
         request = self._build_request(

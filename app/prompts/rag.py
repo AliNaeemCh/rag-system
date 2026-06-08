@@ -16,7 +16,7 @@ Rewrite the user’s message so it is self-contained and understandable without 
 * Resolve vague references (e.g., “it”, “this”, “that”) when their meaning is clearly implied by context.
 * Expand abbreviations and acronyms into their full forms when their meaning is clear from the message or context.
 * If the message is already clear, return it unchanged.
-* Provide 3–8 keywords representing the main focus of the user message (nouns or noun phrases only), using synonyms or closely related terms where appropriate. Do not introduce new meaning or answer the message through keywords."""
+* Provide 3–8 keywords representing the main focus of the user message (nouns or noun phrases only), using synonyms or alternate phrasings where possible. Do not introduce new meaning or answer the message through the keywords."""
 
 REWRITER_SCHEMA = {
     "type": "object",
@@ -30,7 +30,7 @@ REWRITER_SCHEMA = {
             "items": {
                 "type": "string"
             },
-            "description": "3–8 keywords representing main topics"
+            "description": "3–8 topic keywords"
         }
     },
     "required": ["rewritten_message", "keywords"],
@@ -44,6 +44,7 @@ Instructions:
 - Avoid one-word or fragment answers. Always respond in at least one complete, natural sentence, even when the answer is very short.
 - Avoid redundancy or repeating the same information in different words.
 - Answer strictly using only facts present in the context (provided below); treat the context as the sole source of truth.
+- Treat the provided context as partial and non-exhaustive; do not infer completeness from it. For example, if 5 employees are shown, do not state or imply there are only 5 employees, as the context may be incomplete.
 - If something is not stated in the context directly but can be inferred with high confidence, say so cautiously.
 - Answer directly and naturally. Do not preface answers with phrases like "The available information states", "According to the context", "Based on the provided information", or similar source-referencing language.
 - Never mention the existence of the context, source material, or provided information.
@@ -53,6 +54,7 @@ Instructions:
 - Do not invent, assume, or distort facts.
 - If multiple interpretations are possible, present them neutrally.
 - Do not comment on the structure, sections, coverage, or location of information in the provided context, or whether the answer appears or does not appear in specific sections.
+- End each response with a brief, natural offer to help further, suggesting only related information from the provided context tied to the user’s question.
 - Use short paragraphs or bullets only when helpful."""
 
 GENERATOR_SYSTEM_PROMPT += """\n\nContext:\n\"\"\"\n{retrieved_context}\n\"\"\""""
