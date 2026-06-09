@@ -20,7 +20,7 @@ class ScoreBreakdown:
 
 @dataclass(slots=True)
 class RetrievedDocument:
-    id: int
+    id: int     # Chunk id
     content: str
     metadata: dict
     retrieval_type: RetrievalType

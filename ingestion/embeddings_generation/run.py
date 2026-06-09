@@ -23,7 +23,7 @@ def embed_batch(embedding_model: BaseEmbeddingProvider, texts: list[str], normal
 def run_pipeline(config: EmbeddingPipelineConfig, input_path: Path, output_path: Path):
     try:
         logger.info("Initializing pipeline...")
-        embedding_model = get_embedding_model(settings.LOCAL_EMBEDDING_MODEL_PATH)
+        embedding_model = get_embedding_model(settings.EMBEDDING_MODEL_PATH)
         embedding_provider = SentenceTransformerEmbeddingProvider(model=embedding_model)
 
         # Thread pool for API calls

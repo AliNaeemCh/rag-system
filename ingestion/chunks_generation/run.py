@@ -38,7 +38,6 @@ def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path:
             while True:
                 user_in = input(f"\033[93mWarning:\033[0m Previously processed documents ({chunks_counter}) will be deleted. Type 'confirm' to proceed: ")
                 if user_in == "confirm":
-                    reset_jsonl(output_path)
                     break
                 else:
                     print("Invalid input. Try again!")

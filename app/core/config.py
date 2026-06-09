@@ -54,7 +54,10 @@ class Settings(BaseSettings):
 
     # Embeddings
     EMBEDDING_MODEL: str = "all-mpnet-base-v2"  # all-mpnet-base-v2: Max. seq. length: 384
-    LOCAL_EMBEDDING_MODEL_PATH: Path = BASE_DIR / "models" / "embedding" / "all-mpnet-base-v2"
+    @property
+    def EMBEDDING_MODEL_PATH(self) -> str:
+        return BASE_DIR / "models" / "embedding" / self.EMBEDDING_MODEL
+    
     RETRIEVAL_INSTRUCTION: str = ""
     EMBEDDING_DIMENSIONS: int = 768
 
@@ -62,8 +65,11 @@ class Settings(BaseSettings):
     REWRITER_KW_EXCLUDE_LIST: list[str] = ["Systems Limited", "Systems Ltd."]
 
     # Reranker
-    RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L12-v2"   # cross-encoder/ms-marco-MiniLM-L12-v2: 33.4M params. Max. seq. length: 512
-    RERANKER_MODEL_PATH: Path = BASE_DIR / "models" / "cross_encoder" / "ms-marco-MiniLM-L12-v2"
+    RERANKER_MODEL: str = "ms-marco-MiniLM-L12-v2"   # ms-marco-MiniLM-L12-v2: 33.4M params. Max. seq. length: 512
+    
+    @property
+    def RERANKER_MODEL_PATH(self) -> str:
+        return BASE_DIR / "models" / "cross_encoder" / self.RERANKER_MODEL
 
     # DBs
 

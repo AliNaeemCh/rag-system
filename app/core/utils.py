@@ -53,6 +53,11 @@ def load_jsonl(path: Path, return_progress=False) -> Iterator[dict | tuple[dict,
     Lazy streaming JSONL reader (1 line at a time)
     If `return_progress` is set True, it returns the progress which is a float in range 0 to 1
     """
+
+    if not path.exists():
+        yield {}
+        return
+
     total_size = os.path.getsize(path)
     processed_bytes = 0
     

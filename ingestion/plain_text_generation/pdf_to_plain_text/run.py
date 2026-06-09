@@ -4,7 +4,7 @@ setup_logging()
 from ingestion.plain_text_generation.pdf_to_plain_text.config.pdf_config_builder import build_pdf_config
 from ingestion.plain_text_generation.pdf_to_plain_text.pdf_ingestor import PDFIngestor
 from app.core.config import settings
-from app.infra.dependencies import gemini_openai_client
+from app.infra.dependencies import create_openai_client
 from app.infra.llm_engines.openai.engine import OpenAIEngine, OpenAIAPI
 
 import logging
@@ -79,6 +79,7 @@ raw_config = {
 }
 
 pdf_config = build_pdf_config(raw_config)
+gemini_openai_client = create_openai_client(api_key=settings.GEMINI_API_KEY, base_url=settings.GEMINI_OPENAI_BASE_URL)
 
 pdf_ingestor_llm_engine = OpenAIEngine(model_name=settings.PDF_TRANSCRIBER_MODEL, client=gemini_openai_client, api=OpenAIAPI.CHAT_COMPLETIONS)
 pdf_ingestor_fallback_llm_engine = OpenAIEngine(model_name=settings.PDF_TRANSCRIBER_FALLBACK_MODEL, client=gemini_openai_client, api=OpenAIAPI.CHAT_COMPLETIONS)

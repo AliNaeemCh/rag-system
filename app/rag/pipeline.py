@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.rag.config import ResponseMode
 from app.infra.usage_tracking.tracker import usage_tracker
 from app.rag.utils import reciprocal_rank_fusion
+from app.models import RetrievedDocument
 
 import logging
 logger = logging.getLogger("app.rag.pipeline")
@@ -20,8 +21,13 @@ class RAGPipeline:
         self.reranker = reranker
         self.generator = generator
 
-    def run(self, user_message: str, session_id: str, stream: bool = True, eval_mode: bool = False, response_mode: ResponseMode = ResponseMode.ADVANCED) -> str:
+    def run(self, user_message: str, session_id: str, stream: bool = True, eval_mode: bool = False, response_mode: ResponseMode = ResponseMode.ADVANCED, rewriter_temperature: float = 0, generator_temperature: float = 0) -> str | dict[str, list[RetrievedDocument] | str]:
         try:
+            if eval_mode:
+                if stream:
+                    raise Exception("Streaming not supported in evaluation mode!")
+                logging.getLogger("app.rag.pipeline").setLevel(logging.WARNING)     # Silencing logs
+
             logger.info(f"User message received: {user_message}")
 
             # Usage tracking
@@ -29,9 +35,10 @@ class RAGPipeline:
             if response_mode != ResponseMode.FAST:
                 model_names.append(self.rewriter.llm.model_name)
             usage_exceeded = usage_tracker.usage_exceeded(model_names=model_names)
-            logger.info("Usage status: under limit")
             if usage_exceeded:
                 raise Exception ("Usage limit exceeded!")
+            
+            logger.info("Usage status: under limit")
 
             if not eval_mode:
                 # Get chat history
@@ -49,7 +56,8 @@ class RAGPipeline:
             if response_mode != ResponseMode.FAST:
                 rewritten_message, keywords = self.rewriter.rewrite(message=user_message,
                                                                     chat_history=chat_history,
-                                                                    keyword_exclusion_list=settings.REWRITER_KW_EXCLUDE_LIST)
+                                                                    keyword_exclusion_list=settings.REWRITER_KW_EXCLUDE_LIST,
+                                                                    temperature=rewriter_temperature)
                 
                 message_for_retriever = rewritten_message + '\n' + keywords
 
@@ -92,7 +100,8 @@ class RAGPipeline:
                         user_message=user_message,
                         retrieved_context=retrieved_context,
                         history=chat_history,
-                        stream=True
+                        stream=True,
+                        temperature=generator_temperature
                     ):
                         if log_streaming_started:
                             logger.info("Streaming started")
@@ -102,14 +111,13 @@ class RAGPipeline:
 
                     logger.info("Streaming completed")
 
-                    if not eval_mode:
-                        # store user and assistant  messages
-                        self.chat_history.add(session_id, role="user", content=user_message)
-                        self.chat_history.add(
-                            session_id,
-                            role="assistant",
-                            content=full_response
-                        )
+                    # store user and assistant  messages
+                    self.chat_history.add(session_id, role="user", content=user_message)
+                    self.chat_history.add(
+                        session_id,
+                        role="assistant",
+                        content=full_response
+                    )
 
                 return gen()
 
@@ -118,7 +126,8 @@ class RAGPipeline:
                     user_message=user_message,
                     retrieved_context=retrieved_context,
                     history=chat_history,
-                    stream=False
+                    stream=False,
+                    temperature=generator_temperature
                 )
 
                 logger.info("Answer generated")
@@ -131,8 +140,14 @@ class RAGPipeline:
                         role="assistant",
                         content=response
                     )
-
-                return response
+                    return response
+                
+                else:
+                    # Eval mode
+                    return {
+                        "final_top_docs": final_top_docs,
+                        "response": response
+                    }
 
         except Exception as e:
             if not eval_mode:

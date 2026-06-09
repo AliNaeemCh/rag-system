@@ -6,11 +6,12 @@ from app.core.utils import load_pickle, load_jsonl, extract_last_jsonl_object, r
 from app.core.config import settings
 from evaluation.dataset.generation.config import EvalDatasetGeneratorConfig, EvalQuestionType
 from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMPT, INFERENCE_QS_GENERATOR_SYSTEM_PROMPT, OUT_OF_KNOWLEDGE_QS_GENERATOR_SYSTEM_PROMPT, Q_OUTPUT_SCHEMA, QA_OUTPUT_SCHEMA
-from app.infra.dependencies import usage_tracker, openai_client
+from app.infra.usage_tracking.tracker import usage_tracker
+from app.infra.dependencies import create_openai_client
 from app.infra.llm_engines.openai.engine import OpenAIEngine
 
 import logging
-logger = logging.getLogger("app.evaluation.dataset.generation.run")
+logger = logging.getLogger("evaluation.dataset.generation.run")
 logger.info("Loading file...")
 
 import math
@@ -79,27 +80,31 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
         completed_chunk_ids = []
         total_tasks = config.eval_set_size
         completed_tasks = 0
+        example_id = 1
 
         if config.resume:
             for obj in load_jsonl(path=dataset_path):
                 if obj:
                     completed_chunk_ids.extend(obj['chunk_ids'])
                     completed_tasks += 1
+                    if obj['example_id'] > example_id:
+                        example_id = obj['example_id']
+            example_id += 1
             if completed_tasks > 0:
                 logger.info("Eval dataset generation resumed")
             else:
                 logger.info("Eval dataset generation started")
         else:
-            example_no = extract_last_jsonl_object(dataset_path).get('example_no', 0)
-            if example_no > 0:
+            last_obj = extract_last_jsonl_object(dataset_path)
+            if last_obj:
                 while True:
-                    user_in = input(f"\033[93mWarning:\033[0m Previously generated dataset ({example_no} examples) will be deleted. Type 'confirm' to proceed: ")
+                    user_in = input(f"\033[93mWarning:\033[0m Previously generated dataset will be deleted. Type 'confirm' to proceed: ")
                     if user_in == "confirm":
-                        reset_jsonl(dataset_path)
-                        logger.info("Eval dataset generation started")
                         break
                     else:
                         print("Invalid input. Try again!")
+            reset_jsonl(dataset_path)
+            logger.info("Eval dataset generation started")
 
         pbar = tqdm(total=100)
         pbar.n = int((completed_tasks / total_tasks) * 100)
@@ -109,8 +114,6 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
         question_type_to_chunk_ids = generate_chunk_ids(eval_dataset_generator, config)
 
         # Questions generation
-        executor = ThreadPoolExecutor(max_workers=config.num_workers)
-
         with ThreadPoolExecutor(max_workers=config.num_workers) as executor:
             futures = []
             future_to_metadata = {}
@@ -131,12 +134,11 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
                     if all(x in completed_chunk_ids for x in chunk_id):
                         continue
                     # 1. Submit all
-                    print('system prompt is: ', system_prompt)
                     future = executor.submit(eval_dataset_generator.create_question, chunk_id, system_prompt, output_schema)
                     futures.append(future)
                     future_to_metadata[future] = {
                         "chunk_ids": chunk_id,
-                        "question_type": q_type.name
+                        "question_type": q_type.value
                     }
 
             # 2. Process as they complete
@@ -145,7 +147,7 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
                 completed_tasks += 1
                 write_jsonl(
                     data={
-                        "example_no": completed_tasks,
+                        "example_id": example_id,
                         "question_type": future_to_metadata[future]['question_type'],
                         "chunk_ids": future_to_metadata[future]['chunk_ids'],
                         "questions": result['questions'],
@@ -153,6 +155,7 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
                     },
                     output_path=dataset_path
                 )
+                example_id += 1
                 pbar.n = int((completed_tasks / total_tasks) * 100)
                 pbar.refresh()
     except Exception:
@@ -163,6 +166,7 @@ chunks_path = settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl"
 dataset_path = settings.EVAL_DATASET_DIR / "eval_dataset.jsonl"
 
 config = EvalDatasetGeneratorConfig(resume=True)
+openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY_SHARING)
 eval_dataset_generator_llm = OpenAIEngine(model_name=settings.EVAL_DATASET_GENERATOR_LLM, client = openai_client, usage_tracker=usage_tracker)
 eval_dataset_generator = EvalDatasetGenerator(chunks_index=chunks_index, chunks_path=chunks_path, llm=eval_dataset_generator_llm, min_chunk_tokens=settings.CHUNK_SIZE // 2, seed=config.seed)
 

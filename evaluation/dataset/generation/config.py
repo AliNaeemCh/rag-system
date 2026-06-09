@@ -1,7 +1,7 @@
 from app.core.config import settings
 
 import logging
-logger = logging.getLogger("app.evaluation.dataset.generation.config")
+logger = logging.getLogger("evaluation.dataset.generation.config")
 logger.info("Loading file...")
 
 from dataclasses import dataclass
@@ -15,7 +15,7 @@ class EvalQuestionType(str, Enum):
 
 @dataclass(slots=True)
 class EvalDatasetGeneratorConfig:
-    eval_set_size: int = 100
+    eval_set_size: int = 200
     multi_chunk_max_qs: int = settings.FINAL_TOP_K
     num_workers: int = 3
     seed: int = 11

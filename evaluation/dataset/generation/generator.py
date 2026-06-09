@@ -2,7 +2,7 @@ from app.core.utils import get_jsonl_object
 from app.infra.llm_engines.base import BaseLLMEngine
 
 import logging
-logger = logging.getLogger("app.evaluation.dataset.generation.generator")
+logger = logging.getLogger("evaluation.dataset.generation.generator")
 logger.info("Loading file...")
 
 import random
@@ -99,7 +99,7 @@ class EvalDatasetGenerator:
     
     # Questions Creation
 
-    def create_question(self, chunk_ids: list[int], system_prompt: str, output_schema: dict) -> dict[str, list[str]]:
+    def create_question(self, chunk_ids: list[int], system_prompt: str, output_schema: dict, temperature: float = 1) -> dict[str, list[str]]:
         questions = []
         answers = []
         for chunk_id in chunk_ids:
@@ -109,7 +109,7 @@ class EvalDatasetGenerator:
                 user_prompt=user_prompt,
                 system_prompt=system_prompt,
                 schema=output_schema,
-                temperature=1
+                temperature=temperature
             )
             questions.append(response['question'])
             if response.get('answer'):
