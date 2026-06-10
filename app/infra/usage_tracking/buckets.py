@@ -13,7 +13,7 @@ BUCKET_TO_TOKEN_LIMIT = {
     Bucket.SMALL: 250e3     # 250k
 }
 
-large_bucket_models = {
+small_bucket_models = {
     "gpt-5.4",
     "gpt-5.2",
     "gpt-5.1",
@@ -27,7 +27,7 @@ large_bucket_models = {
     "o3",
 }
 
-small_bucket_models = {
+large_bucket_models = {
     "gpt-5.4-mini",
     "gpt-5.4-nano",
     "gpt-5.1-codex-mini",
