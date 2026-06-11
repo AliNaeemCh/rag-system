@@ -121,6 +121,8 @@ class Settings(BaseSettings):
 
     # Evaluation
     EVAL_DATASET_DIR: Path = BASE_DIR / "evaluation" / "dataset"
+    EVAL_RESULTS_DIR: Path = BASE_DIR / "evaluation" / "results"
+    LLM_JUDGE_MODEL: str = "gpt-5.4-mini"
 
     # Ingestion
     CHUNK_SIZE: int = Field(default=350, gt=0)

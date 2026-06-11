@@ -1,0 +1,1 @@
+{"response_mode": "advanced", "embedding_model": "all-mpnet-base-v2", "rewriter": {"model": "gpt-5.4-nano", "temperature": 0}, "reranker_model": "ms-marco-MiniLM-L12-v2", "generator": {"model": "gpt-5.4-mini", "temperature": 0}, "hnsw_index": {"m": 16, "ef_construction": 64, "ef_search": 40}}

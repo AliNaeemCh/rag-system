@@ -1,4 +1,8 @@
-ANSWERABLE_QS_SYSTEM_PROMPT = """You are given a context and one or more questions. Each question is annotated with a question number, and a reference answer is also provided for each question.
+import logging
+logger = logging.getLogger("app.prompts.retrieval_evaluator")
+logger.info("Loading file...")
+
+ANSWERABLE_QS_SYSTEM_PROMPT = """You are given a context and one or more questions. Each question is annotated with a question id, and a reference answer is also provided for each question.
 
 Your task is to determine which questions can be answered using only the provided context, where the answer derived from the context agrees in meaning with the reference answer.
 
@@ -15,7 +19,7 @@ ANSWERABLE_QS_SCHEMA = {
     "properties": {
       "answerable_questions": {
         "type": "array",
-        "description": "List of question numbers answerable from context and consistent with reference answers.",
+        "description": "List of question ids answerable from context and consistent with reference answers.",
         "items": {
           "type": "integer"
         }

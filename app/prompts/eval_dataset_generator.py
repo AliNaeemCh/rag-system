@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger("app.prompts.eval_dataset_generator")
+logger.info("Loading file...")
+
 BASE_QS_GENERATOR_PROMPT = """You are a question-generation assistant.  
 
 Task: Look at the given text chunk and create a question based on it{modifier}.
@@ -29,7 +33,7 @@ Example:
 Chunk: "Thomas Edison invented the phonograph in 1877."
 Question: "Who assisted Thomas Edison in inventing the phonograph in 1800?\""""
 
-QA_OUTPUT_SCHEMA = {
+QA_SCHEMA = {
   "type": "object",
   "properties": {
     "question": {
@@ -45,7 +49,7 @@ QA_OUTPUT_SCHEMA = {
   "additionalProperties": False
 }
 
-Q_OUTPUT_SCHEMA = {
+Q_SCHEMA = {
   "type": "object",
   "properties": {
     "question": {
@@ -56,16 +60,3 @@ Q_OUTPUT_SCHEMA = {
   "required": ["question"],
   "additionalProperties": False
 }
-
-# OUT_OF_KNOWLEDGE_QS_GENERATOR_SYSTEM_PROMPT = """ Your task: Look at the given text chunk and create one question based on it that contains a false or incorrect premise.
-
-# Requirements:
-# - Phrase the question naturally, as a human would ask it.
-# - Base the question loosely on the chunk, but introduce an incorrect detail.
-# - Write the question as if the chunk is NOT available; do not refer to the chunk or its content.  
-# - Do not use any context-dependent words or phrases whose meaning depends on information outside the question itself. This includes pronouns (this, that, these, those) and relative time expressions (this year, last year, today, recently). All references must be explicit and self-contained. 
-# - Keep the question concise, self-contained, and specific.
-
-# Example:
-# Chunk: "Thomas Edison invented the phonograph in 1877."
-# Question: "Who assisted Thomas Edison in inventing the phonograph in 1800?"""

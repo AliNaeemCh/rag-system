@@ -5,7 +5,7 @@ from evaluation.dataset.generation.generator import EvalDatasetGenerator
 from app.core.utils import load_pickle, load_jsonl, extract_last_jsonl_object, reset_jsonl, write_jsonl
 from app.core.config import settings
 from evaluation.dataset.generation.config import EvalDatasetGeneratorConfig, EvalQuestionType
-from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMPT, INFERENCE_QS_GENERATOR_SYSTEM_PROMPT, OUT_OF_KNOWLEDGE_QS_GENERATOR_SYSTEM_PROMPT, Q_OUTPUT_SCHEMA, QA_OUTPUT_SCHEMA
+from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMPT, INFERENCE_QS_GENERATOR_SYSTEM_PROMPT, OUT_OF_KNOWLEDGE_QS_GENERATOR_SYSTEM_PROMPT, Q_SCHEMA, QA_SCHEMA
 from app.infra.usage_tracking.tracker import usage_tracker
 from app.infra.dependencies import create_openai_client
 from app.infra.llm_engines.openai.engine import OpenAIEngine
@@ -118,14 +118,14 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
             futures = []
             future_to_metadata = {}
             for q_type, chunk_ids in question_type_to_chunk_ids.items():
-                output_schema = QA_OUTPUT_SCHEMA
+                output_schema = QA_SCHEMA
                 if q_type == EvalQuestionType.FACTUAL:
                     system_prompt = FACTUAL_QS_GENERATOR_SYSTEM_PROMPT
                 elif q_type == EvalQuestionType.INFERENCE:
                     system_prompt = INFERENCE_QS_GENERATOR_SYSTEM_PROMPT
                 elif q_type == EvalQuestionType.OUT_OF_KNOWLEDGE:
                     system_prompt = OUT_OF_KNOWLEDGE_QS_GENERATOR_SYSTEM_PROMPT
-                    output_schema = Q_OUTPUT_SCHEMA
+                    output_schema = Q_SCHEMA
                 elif q_type == EvalQuestionType.MULTI_CHUNK:
                     system_prompt = FACTUAL_QS_GENERATOR_SYSTEM_PROMPT
                 for chunk_id in chunk_ids:

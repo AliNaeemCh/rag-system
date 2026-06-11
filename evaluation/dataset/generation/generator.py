@@ -1,4 +1,4 @@
-from app.core.utils import get_jsonl_object
+from ingestion.utils import get_chunk_obj
 from app.infra.llm_engines.base import BaseLLMEngine
 
 import logging
@@ -42,7 +42,9 @@ class EvalDatasetGenerator:
 
         while len(selected) < eval_set_size:
             id = self.rng.choice(available_ids)
-            chunk_total_tokens = get_jsonl_object(self.chunks_path, index=self.chunks_index, line_number=id)['metadata']['total_tokens']
+            chunk_total_tokens = get_chunk_obj(chunks_path=self.chunks_path,
+                                    chunks_index=self.chunks_index,
+                                    chunk_id=id)['metadata']['total_tokens']
             if chunk_total_tokens >= self.min_chunk_tokens:
                 selected.append(id)
             available_ids.remove(id)
@@ -70,7 +72,9 @@ class EvalDatasetGenerator:
 
             while len(selected) < ids_count:
                 id = self.rng.choice(available_ids)
-                chunk_total_tokens = get_jsonl_object(self.chunks_path, index=self.chunks_index, line_number=id)['metadata']['total_tokens']
+                chunk_total_tokens = get_chunk_obj(chunks_path=self.chunks_path,
+                                                   chunks_index=self.chunks_index,
+                                                   chunk_id=id)['metadata']['total_tokens']
                 if chunk_total_tokens >= self.min_chunk_tokens:
                     selected.append(id)
                 available_ids.remove(id)
@@ -103,7 +107,7 @@ class EvalDatasetGenerator:
         questions = []
         answers = []
         for chunk_id in chunk_ids:
-            chunk_text = get_jsonl_object(self.chunks_path, self.chunks_index, line_number=chunk_id)['content']
+            chunk_text = get_chunk_obj(self.chunks_path, self.chunks_index, chunk_id)['content']
             user_prompt = f"Chunk:\n\"{chunk_text}\""
             response = self.llm.generate(
                 user_prompt=user_prompt,
