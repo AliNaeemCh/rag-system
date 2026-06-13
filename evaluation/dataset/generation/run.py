@@ -134,7 +134,7 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
                     if all(x in completed_chunk_ids for x in chunk_id):
                         continue
                     # 1. Submit all
-                    future = executor.submit(eval_dataset_generator.create_question, chunk_id, system_prompt, output_schema)
+                    future = executor.submit(eval_dataset_generator.create_question, chunk_id, system_prompt, output_schema, config.llm_temperature)
                     futures.append(future)
                     future_to_metadata[future] = {
                         "chunk_ids": chunk_id,

@@ -23,10 +23,6 @@ class RAGPipeline:
 
     def run(self, user_message: str, session_id: str, stream: bool = True, eval_mode: bool = False, response_mode: ResponseMode = ResponseMode.ADVANCED, rewriter_temperature: float = 0, generator_temperature: float = 0) -> str | dict[str, list[RetrievedDocument] | str]:
         try:
-            if eval_mode:
-                if stream:
-                    raise Exception("Streaming not supported in evaluation mode!")
-                logging.getLogger("app.rag.pipeline").setLevel(logging.WARNING)     # Silencing logs
 
             logger.info(f"User message received: {user_message}")
 

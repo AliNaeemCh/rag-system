@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     PDF_TRANSCRIBER_MODEL: str = "gemini-3.1-flash-lite"
     PDF_TRANSCRIBER_FALLBACK_MODEL: str = "gemini-2.5-flash-lite"
     EVAL_DATASET_GENERATOR_LLM: str = "gpt-5.4"
+    LLM_JUDGE_MODEL: str = "gpt-5.4-mini"
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     GEMINI_OPENAI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     HF_BASE_URL: str = "https://router.huggingface.co/v1"
@@ -122,7 +123,6 @@ class Settings(BaseSettings):
     # Evaluation
     EVAL_DATASET_DIR: Path = BASE_DIR / "evaluation" / "dataset"
     EVAL_RESULTS_DIR: Path = BASE_DIR / "evaluation" / "results"
-    LLM_JUDGE_MODEL: str = "gpt-5.4-mini"
 
     # Ingestion
     CHUNK_SIZE: int = Field(default=350, gt=0)

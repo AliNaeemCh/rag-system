@@ -57,7 +57,7 @@ def extract_completed_page_numbers(jsonl_path: Path) -> list:
 
 def get_chunk_obj(chunks_path: Path, chunks_index: list[int], chunk_id: int) -> dict:
     chunk_obj = get_jsonl_object(jsonl_path=chunks_path, index=chunks_index, line_number=chunk_id)
-    if chunk_obj['chunk_id'] != id:
+    if chunk_obj['chunk_id'] != chunk_id:
         raise Exception(f"Mismatch in chunks file and index. Extracted chunk id={chunk_id} and got id={chunk_obj['chunk_id']}")
     
     return chunk_obj

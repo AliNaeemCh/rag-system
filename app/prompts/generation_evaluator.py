@@ -2,120 +2,131 @@ import logging
 logger = logging.getLogger("app.prompts.generation_evaluator")
 logger.info("Loading file...")
 
-CORRECTNESS_EVAL_SYSTEM_PROMPT = """You are an evaluation model. Evaluate correctness only.
+import copy
 
-Correctness = factual consistency between the generated answer and the reference answer.
+CORRECTNESS_FAITHFULNESS_EVAL_BASE_SYSTEM_PROMPT = """You are an evaluation model. Evaluate {metric_name} only.
+
+{metric_name} = factual consistency between the generated answer and the {reference}.
 
 Step 1 — Answer Presence Check:
-If the generated answer does NOT attempt to answer the question
-(e.g., says "I don't know", "no information found", or is irrelevant),
-then set both fields (total_points and incorrect_points) to 0 and RETURN.
+Determine whether the generated answer provides any information that answers the question.
+
+If the generated answer does not answer the question (e.g., it only states that information is unavailable, unknown, missing, or cannot be determined, or is otherwise irrelevant), return an empty `points` list.
 
 Step 2 — Extract Points:
-Identify all distinct factual points in the generated answer that directly answer the question. Ignore any irrelevant, tangential, background, or contextual information that does not contribute to answering the question.
+Extract all distinct answer points from the generated answer.
+
+Only extract claims that could be substituted directly as an answer to the question.
+
+Do not extract claims about missing information, uncertainty, the contents of the source, or the ability to answer the question.
+
+If after exclusions, no point is left which directly answers the question, return an empty `points` list.
 
 Step 3 — Compare:
-For each point:
+For each extracted point:
 
-* If it is supported by or consistent with the reference answer → correct
-* If it contradicts or is not supported → incorrect
+* If the point is supported by or consistent with the {reference}, set `correct = true`.
+* If the point contradicts the {reference} or is not supported by it, set `correct = false`.
 
-Important:
+Step 4 — Output:
+Return all extracted points with their `correct` labels."""
 
-* Missing information is NOT incorrect
-* Only contradictions count as incorrect
-
-Step 4 — Output: Return the counts of total relevant factual points and incorrect factual points in the required schema."""
-
-CORRECTNESS_EVAL_SCHEMA = {
-  "name": "correctness_evaluation",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "total_points": {
-        "type": "integer",
-        "description": "Number of distinct factual points in the generated answer that directly answer the question."
-      },
-      "incorrect_points": {
-        "type": "integer",
-        "description": "Number of those answer-relevant factual points that contradict or are not supported by the reference answer."
+CORRECTNESS_FAITHFULNESS_EVAL_BASE_SCHEMA = {
+  "type": "object",
+  "properties": {
+    "points": {
+      "type": "array",
+      "description": "Distinct factual points in the generated answer that directly answer the question.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "point": {
+            "type": "string",
+            "description": "One factual point from the generated answer related to the question."
+          },
+          "correct": {
+            "type": "boolean",
+            "description": "Whether this point is supported by or consistent with the {reference}."
+          }
+        },
+        "required": [
+          "point",
+          "correct"
+        ],
+        "additionalProperties": False
       }
-    },
-    "required": [
-      "total_points",
-      "incorrect_points"
-    ],
-    "additionalProperties": False
-  }
+    }
+  },
+  "required": [
+    "points"
+  ],
+  "additionalProperties": False
 }
 
-COMPLETENESS_EVAL_SYSTEM_PROMPT = """You are an evaluation model. Score completeness only.
+CORRECTNESS_EVAL_SYSTEM_PROMPT = CORRECTNESS_FAITHFULNESS_EVAL_BASE_SYSTEM_PROMPT.format(metric_name="Correctness", reference="reference answer")
+CORRECTNESS_EVAL_SCHEMA = copy.deepcopy(CORRECTNESS_FAITHFULNESS_EVAL_BASE_SCHEMA)
+CORRECTNESS_EVAL_SCHEMA["properties"]["points"]["items"]["properties"]["correct"]["description"] = \
+    CORRECTNESS_EVAL_SCHEMA["properties"]["points"]["items"]["properties"]["correct"]["description"].format(
+        reference="reference answer"
+    )
 
-Completeness measures how many factual points from the reference answer are present in the generated answer.
+FAITHFULNESS_EVAL_SYSTEM_PROMPT = CORRECTNESS_FAITHFULNESS_EVAL_BASE_SYSTEM_PROMPT.format(metric_name="Faithfulness", reference="retrieved context")
+FAITHFULNESS_EVAL_SCHEMA = copy.deepcopy(CORRECTNESS_FAITHFULNESS_EVAL_BASE_SCHEMA)
+FAITHFULNESS_EVAL_SCHEMA["properties"]["points"]["items"]["properties"]["correct"]["description"] = \
+    FAITHFULNESS_EVAL_SCHEMA["properties"]["points"]["items"]["properties"]["correct"]["description"].format(
+        reference="retrieved context"
+    )
 
-The reference answer may contain multiple distinct factual points. Evaluate whether each point is present in the generated answer (approximate match is sufficient; exact match is not required).
-
-Rules:
-
-* Ignore extra information in the generated answer that is not in the reference.
-* Do not evaluate correctness, style, or relevance—only whether reference points are present.
-* Partial or ambiguous mentions do NOT count as matched.
-
-Return counts for total_points and matched_points."""
-
-COMPLETENESS_EVAL_SCHEMA = {
-  "name": "completeness_evaluation",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "total_points": {
-        "type": "integer",
-        "description": "Total number of distinct factual points in the reference answer."
-      },
-      "matched_points": {
-        "type": "integer",
-        "description": "Number of reference factual points that are present in the generated answer."
-      }
-    },
-    "required": [
-      "total_points",
-      "matched_points"
-    ],
-    "additionalProperties": False
-  }
-}
-
-RELEVANCE_EVAL_SYSTEM_PROMPT = """You are an evaluation model. Score relevance only.
+RELEVANCE_EVAL_SYSTEM_PROMPT = """You are an evaluation model. Score Relevance only.
 
 Relevance measures how much of the generated answer is directly related to the question.
 
-Break the generated answer into distinct points. A point is relevant if it helps answer the question; otherwise it is irrelevant.
+Break the generated answer into distinct factual points.
 
-Rules:
-- Ignore correctness and completeness—only relevance matters.
-- Count a point as irrelevant if it is off-topic, tangential, or does not help answer the question.
-- Do NOT count greetings, polite phrases, safety disclaimers, or follow-up suggestions as irrelevant if they do not change the factual answer content.
+A point is relevant if it helps answer the question; otherwise it is irrelevant.
 
-Return counts for total_points and irrelevant_points."""
+Count a point as irrelevant if it is off-topic, tangential, or does not help answer the question.
+
+For each extracted point:
+- If it helps answer the question → set relevant = true
+- Otherwise → set relevant = false
+
+Exceptions:
+- Do NOT include inability-to-answer statements (e.g., "no information found", "insufficient information", "unknown") in the points list.
+
+Important:
+- If after exceptions, there is no point left, return empty `points` list.
+
+Return all extracted points with their relevance labels."""
 
 RELEVANCE_EVAL_SCHEMA = {
-  "name": "relevance_evaluation",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "total_points": {
-        "type": "integer",
-        "description": "Total number of distinct factual points in the generated answer."
-      },
-      "irrelevant_points": {
-        "type": "integer",
-        "description": "Number of points in the generated answer that are off-topic, tangential, or do not help answer the question."
+  "type": "object",
+  "properties": {
+    "points": {
+      "type": "array",
+      "description": "All distinct factual points in the generated answer.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "point": {
+            "type": "string",
+            "description": "One factual point from the generated answer."
+          },
+          "relevant": {
+            "type": "boolean",
+            "description": "Whether this point directly helps answer the question."
+          }
+        },
+        "required": [
+          "point",
+          "relevant"
+        ],
+        "additionalProperties": False
       }
-    },
-    "required": [
-      "total_points",
-      "irrelevant_points"
-    ],
-    "additionalProperties": False
-  }
+    }
+  },
+  "required": [
+    "points"
+  ],
+  "additionalProperties": False
 }

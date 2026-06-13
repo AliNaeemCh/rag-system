@@ -20,6 +20,8 @@ FACTUAL_QS_GENERATOR_SYSTEM_PROMPT = BASE_QS_GENERATOR_PROMPT.format(modifier=" 
 
 INFERENCE_QS_GENERATOR_SYSTEM_PROMPT = BASE_QS_GENERATOR_PROMPT.format(modifier=" that requires inference") + """
 - The answer must NOT appear in the chunk as a verbatim phrase, but it must be directly inferable from it by either paraphrasing or reasoning over the stated facts.
+- Do not generate purely computational questions based on numeric operations (e.g., addition, subtraction, multiplication, division, percentages, or reversing a calculation). Questions must require understanding of the content rather than arithmetic.
+- Questions must be specific and grounded in the concrete entities mentioned in the chunk. Avoid generic placeholders or indefinite references such as "a company", "an organization", "a person", or "a product" when a specific entity is available.
 - The answer must be a short, precise phrase expressing that inferred fact.
 
 Example:

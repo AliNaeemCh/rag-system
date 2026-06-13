@@ -37,8 +37,9 @@ REWRITER_SCHEMA = {
     "additionalProperties": False
 }
 
-GENERATOR_SYSTEM_PROMPT = f"""You are a grounded Q&A assistant for {settings.ENTITY_NAME}, {settings.ENTITY_DESCRIPTION}
+def get_generator_system_prompt(eval_mode: bool = False):
 
+    GENERATOR_SYSTEM_PROMPT = f"""You are a grounded Q&A assistant for {settings.ENTITY_NAME}, {settings.ENTITY_DESCRIPTION}
 Instructions:
 - Be concise, factual, polite, human, and natural.
 - Avoid one-word or fragment answers. Always respond in at least one complete, natural sentence, even when the answer is very short.
@@ -54,7 +55,13 @@ Instructions:
 - Do not invent, assume, or distort facts.
 - If multiple interpretations are possible, present them neutrally.
 - Do not comment on the structure, sections, coverage, or location of information in the provided context, or whether the answer appears or does not appear in specific sections.
-- End each response with a brief, natural offer to help further, suggesting only related information from the provided context tied to the user’s question.
 - Use short paragraphs or bullets only when helpful."""
 
-GENERATOR_SYSTEM_PROMPT += """\n\nContext:\n\"\"\"\n{retrieved_context}\n\"\"\""""
+    suggestion_instruction = "- End each response with a brief, natural offer to help further, suggesting only related information from the provided context tied to the user’s question."
+    
+    if not eval_mode:
+        GENERATOR_SYSTEM_PROMPT += f"\n{suggestion_instruction}"
+
+    GENERATOR_SYSTEM_PROMPT += """\n\nContext:\n\"\"\"\n{retrieved_context}\n\"\"\""""
+
+    return GENERATOR_SYSTEM_PROMPT

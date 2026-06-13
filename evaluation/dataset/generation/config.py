@@ -19,4 +19,5 @@ class EvalDatasetGeneratorConfig:
     multi_chunk_max_qs: int = settings.FINAL_TOP_K
     num_workers: int = 3
     seed: int = 11
+    llm_temperature: float = 1
     resume: bool = True

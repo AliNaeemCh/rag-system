@@ -23,6 +23,18 @@ class BaseRetrievalStore(ABC):
         Dense/vector similarity search (semantic retrieval)
         """
         pass
+    
+    @abstractmethod
+    def keyword_search(
+        self,
+        query: str,
+        top_k: int,
+        **kwargs
+    ) -> list[RetrievedDocument]:
+        """
+        Sparse retrieval
+        """
+        pass
 
 class BaseDocumentStore(ABC):
     """
