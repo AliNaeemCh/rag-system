@@ -1,5 +1,6 @@
 from app.models import RetrievedDocument
 from app.infra.llm_engines.base import BaseLLMEngine
+from evaluation.dataset.generation.config import EvalQuestionType
 
 import logging
 logger = logging.getLogger("evaluation.generation_eval")
@@ -50,6 +51,7 @@ class GenerationEvaluator:
         return user_prompt
     
     def evaluate_correctness(self,
+                             question_type: EvalQuestionType,
                              questions: list[str],
                              reference_answers: list[str],
                              generated_answer: str,
@@ -74,7 +76,7 @@ class GenerationEvaluator:
 
         else:
             correct_points = 0
-            correctness = 0
+            correctness = 0 if question_type != EvalQuestionType.OUT_OF_KNOWLEDGE else 1
 
         return {"correctness": correctness, "correct_points": correct_points, "total_points": total_points} | output
 

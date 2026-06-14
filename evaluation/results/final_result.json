@@ -231,37 +231,37 @@
         },
         "out_of_knowledge": {
           "correctness": {
-            "sum": 37.833333333333336,
+            "sum": 43.166666666666664,
             "values": 50,
-            "correctnesss": 0.7566666666666667
+            "correctnesss": 0.8633333333333333
           },
           "faithfulness": {
-            "sum": 40.99999999999999,
+            "sum": 36.833333333333336,
             "values": 50,
-            "faithfulness": 0.8199999999999998
+            "faithfulness": 0.7366666666666667
           },
           "relevance": {
-            "sum": 49.8,
+            "sum": 50.0,
             "values": 50,
-            "relevance": 0.996
+            "relevance": 1.0
           }
         }
       },
       "final_result": {
         "correctness": {
-          "sum": 169.53333333333333,
+          "sum": 174.86666666666665,
           "values": 200,
-          "correctness": 0.8476666666666667
+          "correctness": 0.8743333333333332
         },
         "faithfulness": {
-          "sum": 184.36666666666665,
+          "sum": 180.20000000000002,
           "values": 200,
-          "faithfulness": 0.9218333333333333
+          "faithfulness": 0.9010000000000001
         },
         "relevance": {
-          "sum": 199.8,
+          "sum": 200.0,
           "values": 200,
-          "relevance": 0.9990000000000001
+          "relevance": 1.0
         }
       }
     }

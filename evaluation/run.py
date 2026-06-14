@@ -73,6 +73,7 @@ def process_example(rag_pipeline: RAGPipeline,
 
     # Generation eval
     correctness_result = generation_eval.evaluate_correctness(
+        question_type=question_type,
         questions=questions,
         reference_answers=reference_answers,
         generated_answer=generated_answer,
