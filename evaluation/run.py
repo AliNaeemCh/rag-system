@@ -4,7 +4,7 @@ setup_logging()
 from app.core.config import settings
 from app.rag.pipeline import RAGPipeline
 from app.infra.dependencies import build_rag_pipeline, create_openai_client
-from app.core.utils import load_jsonl, extract_last_jsonl_object, reset_jsonl, write_jsonl
+from app.core.utils import load_jsonl, extract_last_jsonl_object, reset_jsonl, write_jsonl, write_json
 from app.infra.usage_tracking.tracker import usage_tracker
 from evaluation.config import EvalConfig
 from app.rag.config import ResponseMode
@@ -19,6 +19,7 @@ from app.prompts.generation_evaluator import CORRECTNESS_EVAL_SYSTEM_PROMPT, COR
 from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMPT, INFERENCE_QS_GENERATOR_SYSTEM_PROMPT, OUT_OF_KNOWLEDGE_QS_GENERATOR_SYSTEM_PROMPT
 from evaluation.dataset.generation.config import EvalQuestionType
 from evaluation.dataset.generation.config import EvalDatasetGeneratorConfig
+from evaluation.utils import update_eval_results, aggregate_eval_results, get_eval_results_obj
                                                 
 import logging
 logger = logging.getLogger("evaluation.run")
@@ -27,6 +28,7 @@ logger.info("Loading file...")
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from tqdm import tqdm
+import copy
 
 def process_example(rag_pipeline: RAGPipeline,
                     retrieval_eval: RetrievalEvaluator,
@@ -42,11 +44,6 @@ def process_example(rag_pipeline: RAGPipeline,
                     generation_eval_temperature: float = 0) -> dict:
     
     question = " ".join(questions)
-
-    if question_type == EvalQuestionType.OUT_OF_KNOWLEDGE:
-        reference_answers = []
-        for _ in range(len(questions)):
-            reference_answers.append("The question is invalid or logically flawed. The generated answer is expected to either refute it or not provide a direct response.")
 
     # Inference
     output = rag_pipeline.run(
@@ -122,7 +119,8 @@ def run_pipeline(config: EvalConfig,
                  retrieval_eval: RetrievalEvaluator,
                  generation_eval: GenerationEvaluator,
                  dataset_path: Path,
-                 result_path: Path):
+                 raw_result_path: Path,
+                 final_result_path: Path):
     try:
         def create_config_object():
 
@@ -190,10 +188,13 @@ def run_pipeline(config: EvalConfig,
         logger.info("Initializing pipeline...")
 
         completed_example_ids = []
-        last_obj = extract_last_jsonl_object(result_path)
+        eval_results = get_eval_results_obj()
+        last_obj = extract_last_jsonl_object(raw_result_path)
+
         if config.resume:
-            for obj in load_jsonl(path=result_path):
+            for obj in load_jsonl(path=raw_result_path):
                 if obj.get('example_id'):
+                    update_eval_results(eval_results, new_result=obj)
                     completed_example_ids.append(obj['example_id'])
             if len(completed_example_ids) > 0:
                 logger.info("Evaluation resumed")
@@ -207,7 +208,7 @@ def run_pipeline(config: EvalConfig,
                         break
                     else:
                         print("Invalid input. Try again!")
-            reset_jsonl(result_path)
+            reset_jsonl(raw_result_path)
             last_obj = {}
             logger.info("Evaluation started")
         
@@ -217,7 +218,7 @@ def run_pipeline(config: EvalConfig,
             config_obj = create_config_object()
             write_jsonl(
                 data=config_obj,
-                output_path=result_path
+                output_path=raw_result_path
             )
 
         pbar = tqdm(total=100)
@@ -242,8 +243,7 @@ def run_pipeline(config: EvalConfig,
 
                 for i, id in enumerate(obj['chunk_ids']):
                     relevant_doc_ids.append(id)
-                    if question_type != EvalQuestionType.OUT_OF_KNOWLEDGE:
-                        reference_answers.append(obj['answers'][i])
+                    reference_answers.append(obj['answers'][i])
                 
                 if len(futures) >= config.num_workers:
                     done, _ = wait(futures, return_when=FIRST_COMPLETED)
@@ -251,8 +251,9 @@ def run_pipeline(config: EvalConfig,
                         result = future.result()
                         write_jsonl(
                             data= {"example_id": future_to_metadata[future]["example_id"]} | result,
-                            output_path=result_path
+                            output_path=raw_result_path
                         )
+                        update_eval_results(eval_results, new_result=result)
                         del future_to_metadata[future]
                         futures.remove(future)
 
@@ -286,8 +287,9 @@ def run_pipeline(config: EvalConfig,
                     result = future.result()
                     write_jsonl(
                         data= {"example_id": future_to_metadata[future]["example_id"]} | result,
-                        output_path=result_path
+                        output_path=raw_result_path
                     )
+                    update_eval_results(eval_results, new_result=result)
                     del future_to_metadata[future]
                     futures.remove(future)
 
@@ -296,13 +298,16 @@ def run_pipeline(config: EvalConfig,
 
         logging.getLogger().setLevel(logging.INFO)  # Restoring logs
 
+        aggregate_eval_results(eval_results)
+        write_json(eval_results, output_path=final_result_path)
+
         logger.info("Evaluation completed")
 
     except:
         logger.exception("Evaluation failed!")
 
 config = EvalConfig(resume=True)
-rag_pipeline = build_rag_pipeline(eval_mode=True)
+rag_pipeline = build_rag_pipeline()
 openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY_SHARING)
 llm_judge = OpenAIEngine(model_name=settings.LLM_JUDGE_MODEL, client=openai_client, usage_tracker=usage_tracker)
 
@@ -315,5 +320,6 @@ run_pipeline(
     retrieval_eval=retrieval_eval,
     generation_eval=generation_eval,
     dataset_path=settings.EVAL_DATASET_DIR / "eval_dataset.jsonl",
-    result_path=settings.EVAL_RESULTS_DIR / "raw_results.jsonl"
+    raw_result_path=settings.EVAL_RESULTS_DIR / "raw_results.jsonl",
+    final_result_path=settings.EVAL_RESULTS_DIR / "final_result.json"
 )

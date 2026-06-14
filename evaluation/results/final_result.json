@@ -1,0 +1,269 @@
+[
+  {
+    "retrieval": {
+      "question_type_to_result": {
+        "factual": {
+          "mrr": {
+            "sum": 44.5,
+            "values": 50,
+            "mrr": 0.89
+          },
+          "recall_k": {
+            "sum": 48.0,
+            "values": 50,
+            "recall_k": 0.96
+          }
+        },
+        "inference": {
+          "mrr": {
+            "sum": 43.333333333333336,
+            "values": 50,
+            "mrr": 0.8666666666666667
+          },
+          "recall_k": {
+            "sum": 48.0,
+            "values": 50,
+            "recall_k": 0.96
+          }
+        },
+        "multi_chunk": {
+          "num_chunks_to_result": {
+            "2": {
+              "mrr": {
+                "sum": 12.166666666666666,
+                "values": 14,
+                "mrr": 0.869047619047619
+              },
+              "recall_k": {
+                "sum": 9.5,
+                "values": 14,
+                "recall_k": 0.6785714285714286
+              }
+            },
+            "3": {
+              "mrr": {
+                "sum": 10.7,
+                "values": 12,
+                "mrr": 0.8916666666666666
+              },
+              "recall_k": {
+                "sum": 4.666666666666666,
+                "values": 12,
+                "recall_k": 0.38888888888888884
+              }
+            },
+            "4": {
+              "mrr": {
+                "sum": 10.0,
+                "values": 12,
+                "mrr": 0.8333333333333334
+              },
+              "recall_k": {
+                "sum": 3.5,
+                "values": 12,
+                "recall_k": 0.2916666666666667
+              }
+            },
+            "5": {
+              "mrr": {
+                "sum": 9.783333333333333,
+                "values": 12,
+                "mrr": 0.8152777777777778
+              },
+              "recall_k": {
+                "sum": 2.4,
+                "values": 12,
+                "recall_k": 0.19999999999999998
+              }
+            }
+          },
+          "avg_result": {
+            "mrr": {
+              "sum": 42.65,
+              "values": 50,
+              "mrr": 0.853
+            },
+            "recall_k": {
+              "sum": 20.066666666666663,
+              "values": 50,
+              "recall_k": 0.40133333333333326
+            }
+          }
+        }
+      },
+      "final_result": {
+        "mrr": {
+          "sum": 130.48333333333332,
+          "values": 150,
+          "mrr": 0.8698888888888888
+        },
+        "recall_k": {
+          "sum": 116.06666666666672,
+          "values": 150,
+          "recall_k": 0.7737777777777781
+        }
+      }
+    },
+    "generation": {
+      "question_type_to_result": {
+        "factual": {
+          "correctness": {
+            "sum": 47.0,
+            "values": 50,
+            "correctnesss": 0.94
+          },
+          "faithfulness": {
+            "sum": 49.0,
+            "values": 50,
+            "faithfulness": 0.98
+          },
+          "relevance": {
+            "sum": 50.0,
+            "values": 50,
+            "relevance": 1.0
+          }
+        },
+        "inference": {
+          "correctness": {
+            "sum": 44.0,
+            "values": 50,
+            "correctnesss": 0.88
+          },
+          "faithfulness": {
+            "sum": 48.0,
+            "values": 50,
+            "faithfulness": 0.96
+          },
+          "relevance": {
+            "sum": 50.0,
+            "values": 50,
+            "relevance": 1.0
+          }
+        },
+        "multi_chunk": {
+          "num_chunks_to_result": {
+            "2": {
+              "correctness": {
+                "sum": 13.5,
+                "values": 14,
+                "correctness": 0.9642857142857143
+              },
+              "faithfulness": {
+                "sum": 13.0,
+                "values": 14,
+                "faithfulness": 0.9285714285714286
+              },
+              "relevance": {
+                "sum": 14.0,
+                "values": 14,
+                "relevance": 1.0
+              }
+            },
+            "3": {
+              "correctness": {
+                "sum": 11.0,
+                "values": 12,
+                "correctness": 0.9166666666666666
+              },
+              "faithfulness": {
+                "sum": 10.666666666666668,
+                "values": 12,
+                "faithfulness": 0.888888888888889
+              },
+              "relevance": {
+                "sum": 12.0,
+                "values": 12,
+                "relevance": 1.0
+              }
+            },
+            "4": {
+              "correctness": {
+                "sum": 9.0,
+                "values": 12,
+                "correctness": 0.75
+              },
+              "faithfulness": {
+                "sum": 11.5,
+                "values": 12,
+                "faithfulness": 0.9583333333333334
+              },
+              "relevance": {
+                "sum": 12.0,
+                "values": 12,
+                "relevance": 1.0
+              }
+            },
+            "5": {
+              "correctness": {
+                "sum": 7.2,
+                "values": 12,
+                "correctness": 0.6
+              },
+              "faithfulness": {
+                "sum": 11.2,
+                "values": 12,
+                "faithfulness": 0.9333333333333332
+              },
+              "relevance": {
+                "sum": 12.0,
+                "values": 12,
+                "relevance": 1.0
+              }
+            }
+          },
+          "avg_result": {
+            "correctness": {
+              "sum": 40.7,
+              "values": 50,
+              "correctness": 0.8140000000000001
+            },
+            "faithfulness": {
+              "sum": 46.36666666666667,
+              "values": 50,
+              "faithfulness": 0.9273333333333333
+            },
+            "relevance": {
+              "sum": 50.0,
+              "values": 50,
+              "relevance": 1.0
+            }
+          }
+        },
+        "out_of_knowledge": {
+          "correctness": {
+            "sum": 37.833333333333336,
+            "values": 50,
+            "correctnesss": 0.7566666666666667
+          },
+          "faithfulness": {
+            "sum": 40.99999999999999,
+            "values": 50,
+            "faithfulness": 0.8199999999999998
+          },
+          "relevance": {
+            "sum": 49.8,
+            "values": 50,
+            "relevance": 0.996
+          }
+        }
+      },
+      "final_result": {
+        "correctness": {
+          "sum": 169.53333333333333,
+          "values": 200,
+          "correctness": 0.8476666666666667
+        },
+        "faithfulness": {
+          "sum": 184.36666666666665,
+          "values": 200,
+          "faithfulness": 0.9218333333333333
+        },
+        "relevance": {
+          "sum": 199.8,
+          "values": 200,
+          "relevance": 0.9990000000000001
+        }
+      }
+    }
+  }
+]

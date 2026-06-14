@@ -1,4 +1,5 @@
 from app.rag.config import ResponseMode
+
 import logging
 logger = logging.getLogger("evaluation.config")
 logger.info("Loading file...")

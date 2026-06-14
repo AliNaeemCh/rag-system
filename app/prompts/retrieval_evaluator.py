@@ -10,7 +10,9 @@ A question can be answered if its answer is:
 - explicitly stated in the context, or
 - can be logically inferred or derived from the context,
 
-and the answer derived from the context must agree with the reference answer.
+and the derived answer is consistent with the reference answer.
+
+Consistency does not require exact wording, format, or numerical representation; differences in expression, rounding, or granularity should be ignored as long as the underlying answer aligns.
 
 Do not use any outside knowledge; treat the context as the sole source of truth."""
 

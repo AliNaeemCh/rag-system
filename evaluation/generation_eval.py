@@ -27,7 +27,7 @@ class GenerationEvaluator:
                 user_prompt += f"""\n\nReference answer:\n\"{reference_answers[0]}\""""
             elif retrieved_docs:
                 retrieved_context = self._create_retrieved_context(retrieved_docs)
-                user_prompt += f"""\n\Retrieved context:\n{retrieved_context}"""
+                user_prompt += f"""\n\nRetrieved context:\n{retrieved_context}"""
         else:
             question = ""
             ref_answer = ""
@@ -66,16 +66,16 @@ class GenerationEvaluator:
             temperature=temperature
         )
 
-        total_points = len(output['points'])
+        total_points = sum(d["relevant"] for d in output["points"])
 
         if total_points > 0:
-            correct_points = sum(d["correct"] for d in output["points"])
+            correct_points = sum(d["correct"] and d['relevant'] for d in output["points"])
             correctness = correct_points/total_points
 
         else:
             correct_points = 0
-            correctness = 1
-        
+            correctness = 0
+
         return {"correctness": correctness, "correct_points": correct_points, "total_points": total_points} | output
 
     def evaluate_faithfulness(self,
@@ -95,10 +95,10 @@ class GenerationEvaluator:
             temperature=temperature
         )
 
-        total_points = len(output['points'])
+        total_points = sum(d["relevant"] for d in output["points"])
 
         if total_points > 0:
-            correct_points = sum(d["correct"] for d in output["points"])
+            correct_points = sum(d["correct"] and d['relevant'] for d in output["points"])
             faithfulness = correct_points/total_points
 
         else:
