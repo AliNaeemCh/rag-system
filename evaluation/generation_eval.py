@@ -76,7 +76,7 @@ class GenerationEvaluator:
 
         else:
             correct_points = 0
-            correctness = 0 if question_type != EvalQuestionType.OUT_OF_KNOWLEDGE else 1
+            correctness = 0
 
         return {"correctness": correctness, "correct_points": correct_points, "total_points": total_points} | output
 

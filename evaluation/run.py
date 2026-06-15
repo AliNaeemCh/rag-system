@@ -16,7 +16,7 @@ from app.prompts.retrieval_evaluator import ANSWERABLE_QS_SYSTEM_PROMPT, ANSWERA
 from app.prompts.generation_evaluator import CORRECTNESS_EVAL_SYSTEM_PROMPT, CORRECTNESS_EVAL_SCHEMA, \
                                             FAITHFULNESS_EVAL_SYSTEM_PROMPT, FAITHFULNESS_EVAL_SCHEMA, \
                                             RELEVANCE_EVAL_SYSTEM_PROMPT, RELEVANCE_EVAL_SCHEMA
-from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMPT, INFERENCE_QS_GENERATOR_SYSTEM_PROMPT, OUT_OF_KNOWLEDGE_QS_GENERATOR_SYSTEM_PROMPT
+from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMPT, INFERENCE_QS_GENERATOR_SYSTEM_PROMPT
 from evaluation.dataset.generation.config import EvalQuestionType
 from evaluation.dataset.generation.config import EvalDatasetGeneratorConfig
 from evaluation.utils import update_eval_results, aggregate_eval_results, get_eval_results_obj
@@ -60,16 +60,13 @@ def process_example(rag_pipeline: RAGPipeline,
     generated_answer = output['response']
 
     # Retrieval eval
-    retrieval_results = None
-
-    if question_type != EvalQuestionType.OUT_OF_KNOWLEDGE:
-        retrieval_results = retrieval_eval.evaluate(
-            questions=questions,
-            relevant_doc_ids=relevant_doc_ids,
-            reference_answers=reference_answers,
-            retrieved_docs=retrieved_docs,
-            temperature=retrieval_eval_temperature
-        )
+    retrieval_results = retrieval_eval.evaluate(
+        questions=questions,
+        relevant_doc_ids=relevant_doc_ids,
+        reference_answers=reference_answers,
+        retrieved_docs=retrieved_docs,
+        temperature=retrieval_eval_temperature
+    )
 
     # Generation eval
     correctness_result = generation_eval.evaluate_correctness(
@@ -134,14 +131,14 @@ def run_pipeline(config: EvalConfig,
             if config.response_mode == ResponseMode.ADVANCED:
                 config_obj.update(
                     {
-                        "rewriter": {"model": rag_pipeline.rewriter.llm.model_name, "temperature": config.rewriter_temperature, "system_prompt": rag_pipeline.rewriter.system_prompt},
+                        "rewriter": {"model": rag_pipeline.rewriter.llm.model_name, "temperature": config.rewriter_temperature, "system_prompt": rag_pipeline.rewriter.system_prompt, "schema": rag_pipeline.rewriter.output_schema},
                         "reranker_model": settings.RERANKER_MODEL
                     }
                 )
             elif config.response_mode == ResponseMode.BALANCED:
                 config_obj.update(
                     {
-                        "rewriter_model": {"model": rag_pipeline.rewriter.llm.model_name, "temperature": config.rewriter_temperature, "system_prompt": rag_pipeline.rewriter.system_prompt}
+                        "rewriter_model": {"model": rag_pipeline.rewriter.llm.model_name, "temperature": config.rewriter_temperature, "system_prompt": rag_pipeline.rewriter.system_prompt, "schema": rag_pipeline.rewriter.output_schema}
                     }
                 )
             config_obj.update(
@@ -166,6 +163,11 @@ def run_pipeline(config: EvalConfig,
                     },
                     "eval_llm_judge": {
                         "model": settings.LLM_JUDGE_MODEL,
+                        "retrieval": {
+                            "model": settings.LLM_JUDGE_MODEL,
+                            "temperature": config.retrieval_eval_temperature,
+                            "system_prompt": ANSWERABLE_QS_SYSTEM_PROMPT
+                        }
                         "retrieval_eval_temperature": config.retrieval_eval_temperature,
                         "generation_eval_temperature": config.generation_eval_temperature
                     },
@@ -178,8 +180,7 @@ def run_pipeline(config: EvalConfig,
                         "question_types": [e.value for e in EvalQuestionType],
                         "system_prompts": {
                             f"{EvalQuestionType.FACTUAL.value}, {EvalQuestionType.MULTI_CHUNK.value}": FACTUAL_QS_GENERATOR_SYSTEM_PROMPT,
-                            EvalQuestionType.INFERENCE.value: INFERENCE_QS_GENERATOR_SYSTEM_PROMPT,
-                            EvalQuestionType.OUT_OF_KNOWLEDGE.value: OUT_OF_KNOWLEDGE_QS_GENERATOR_SYSTEM_PROMPT
+                            EvalQuestionType.INFERENCE.value: INFERENCE_QS_GENERATOR_SYSTEM_PROMPT
                         }
                     }
                 }

@@ -35,34 +35,6 @@ Return all extracted points with:
 - correct
 - correctness_evidence"""
 
-# CORRECTNESS_FAITHFULNESS_EVAL_BASE_SYSTEM_PROMPT = """You are an evaluation model. Evaluate {metric_name} only.
-
-# {metric_name} = factual consistency between the generated answer and the {reference}.
-
-# Step 1 — Answer Presence Check:
-# Determine whether the generated answer provides any information that answers the question.
-
-# If the generated answer does not answer the question (e.g., it only states that information is unavailable, unknown, missing, or cannot be determined, or is otherwise irrelevant), return an empty `points` list.
-
-# Step 2 — Extract Points:
-# Extract all distinct answer points from the generated answer.
-
-# Only extract claims that could be substituted directly as an answer to the question.
-
-# Do not extract claims about missing information, uncertainty, the contents of the source, or the ability to answer the question.
-
-# Important:
-# - If after exceptions, there is no point left, return empty `points` list.
-
-# Step 3 — Compare:
-# For each extracted point:
-
-# * If the point is supported by or broadly consistent with the {reference}, set `correct = true`.
-# * If the point contradicts the {reference} or is not supported by it, set `correct = false`.
-
-# Step 4 — Output:
-# Return all extracted points with their `correct` labels."""
-
 CORRECTNESS_FAITHFULNESS_EVAL_BASE_SCHEMA = {
   "type": "object",
   "properties": {
@@ -101,38 +73,6 @@ CORRECTNESS_FAITHFULNESS_EVAL_BASE_SCHEMA = {
   "required": ["points"],
   "additionalProperties": False
 }
-
-# CORRECTNESS_FAITHFULNESS_EVAL_BASE_SCHEMA = {
-#   "type": "object",
-#   "properties": {
-#     "points": {
-#       "type": "array",
-#       "description": "Distinct factual points in the generated answer that directly answer the question.",
-#       "items": {
-#         "type": "object",
-#         "properties": {
-#           "point": {
-#             "type": "string",
-#             "description": "A statement that directly answers the question."
-#           },
-#           "correct": {
-#             "type": "boolean",
-#             "description": "Whether this point is supported by or consistent with the {reference}."
-#           }
-#         },
-#         "required": [
-#           "point",
-#           "correct"
-#         ],
-#         "additionalProperties": False
-#       }
-#     }
-#   },
-#   "required": [
-#     "points"
-#   ],
-#   "additionalProperties": False
-# }
 
 CORRECTNESS_EVAL_SYSTEM_PROMPT = CORRECTNESS_FAITHFULNESS_EVAL_BASE_SYSTEM_PROMPT.format(metric_name="Correctness", reference="reference answer")
 CORRECTNESS_EVAL_SCHEMA = copy.deepcopy(CORRECTNESS_FAITHFULNESS_EVAL_BASE_SCHEMA)

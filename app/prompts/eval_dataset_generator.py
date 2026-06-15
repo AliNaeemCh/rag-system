@@ -28,13 +28,6 @@ Example:
 Chunk: "The Eiffel Tower was completed in 1889 in Paris."
 Question: "During which century was the Eiffel Tower completed?\""""
 
-OUT_OF_KNOWLEDGE_QS_GENERATOR_SYSTEM_PROMPT = BASE_QS_GENERATOR_PROMPT.format(modifier=" that contains a false or incorrect premise") + """
-- Base the question loosely on the chunk, but introduce an incorrect detail.
-
-Example:
-Chunk: "Thomas Edison invented the phonograph in 1877."
-Question: "Who assisted Thomas Edison in inventing the phonograph in 1800?\""""
-
 QA_SCHEMA = {
   "type": "object",
   "properties": {
@@ -48,17 +41,5 @@ QA_SCHEMA = {
     }
   },
   "required": ["question", "answer"],
-  "additionalProperties": False
-}
-
-Q_SCHEMA = {
-  "type": "object",
-  "properties": {
-    "question": {
-      "type": "string",
-      "description": "A self-contained question."
-    }
-  },
-  "required": ["question"],
   "additionalProperties": False
 }

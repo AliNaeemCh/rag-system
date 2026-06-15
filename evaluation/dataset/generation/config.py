@@ -11,7 +11,6 @@ class EvalQuestionType(str, Enum):
     FACTUAL = "factual"
     INFERENCE = "inference"
     MULTI_CHUNK = "multi_chunk"     # Factual question based on multiple chunks
-    OUT_OF_KNOWLEDGE = "out_of_knowledge"
 
 @dataclass(slots=True)
 class EvalDatasetGeneratorConfig:

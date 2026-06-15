@@ -20,15 +20,14 @@ from pathlib import Path
 from tqdm import tqdm
 
 def generate_chunk_ids(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatasetGeneratorConfig) -> dict[EvalQuestionType, list[int] | list[list[int]]]:
-    total_question_types = 4
+    total_question_types = len(EvalQuestionType)
     questions_per_type = math.ceil(config.eval_set_size / total_question_types)
 
-    # - Question types: factual + inference + out_of_knowledge
-    base_ids = eval_dataset_generator.pick_random_ids(eval_set_size=questions_per_type * 3)
+    # - Question types: factual + inference
+    base_ids = eval_dataset_generator.pick_random_ids(eval_set_size=questions_per_type * 2)
 
     factual_qs_chunk_ids = base_ids[:questions_per_type]
     inference_qs_chunk_ids = base_ids[questions_per_type:questions_per_type * 2]
-    out_of_knowledge_qs_chunk_ids = base_ids[questions_per_type * 2:]
 
     eval_dataset_generator.extend_global_exclusion_ids(base_ids)
 
@@ -69,8 +68,7 @@ def generate_chunk_ids(eval_dataset_generator: EvalDatasetGenerator, config: Eva
     return {
         EvalQuestionType.FACTUAL: factual_qs_chunk_ids,
         EvalQuestionType.INFERENCE: inference_qs_chunk_ids,
-        EvalQuestionType.MULTI_CHUNK: multi_chunk_qs_chunk_ids,
-        EvalQuestionType.OUT_OF_KNOWLEDGE: out_of_knowledge_qs_chunk_ids
+        EvalQuestionType.MULTI_CHUNK: multi_chunk_qs_chunk_ids
     }
 
 def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatasetGeneratorConfig, dataset_path: Path):
