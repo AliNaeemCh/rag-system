@@ -7,9 +7,6 @@ from pydantic import Field
 from enum import Enum
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-
-
 class LogLevel(str, Enum):
     DEBUG = "DEBUG"
     INFO = "INFO"
@@ -21,6 +18,7 @@ class OverlapGranularity(str, Enum):
     SENTENCE_BASED = "sentence_based"
     WORD_BASED = "word_based"
 
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
 
@@ -41,7 +39,7 @@ class Settings(BaseSettings):
     
     # LLM
     GEMINI_API_KEY: str
-    OPENAI_API_KEY_SHARING: str
+    OPENAI_API_KEY: str
     HF_TOKEN: str
     GENERATOR_MODEL: str = "gpt-5.4-mini"
     REWRITER_MODEL: str = "gpt-5.4-nano"
@@ -77,23 +75,26 @@ class Settings(BaseSettings):
     DB_POOL_MAX_CONNS: int = Field(default=10, gt=0)
         
     # - Usage tracker
-    USAGE_TRACKER_DB_USER: str
-    USAGE_TRACKER_DB_PASSWORD: str
-    USAGE_TRACKER_DB_HOST: str
-    USAGE_TRACKER_DB_PORT: int
-    USAGE_TRACKER_DB_NAME: str
+    USAGE_TRACKER_DB_USER: str | None = None
+    USAGE_TRACKER_DB_PASSWORD: str | None = None
+    USAGE_TRACKER_DB_HOST: str | None = None
+    USAGE_TRACKER_DB_PORT: str | None = None
+    USAGE_TRACKER_DB_NAME: str | None = None
 
     USAGE_TRACKER_DB_POOL_MAX_CONNS: int = Field(default=10, gt=0)
 
     @property
     def USAGE_TRACKER_DB_URL(self) -> str:
-        return (
-            f"postgresql://{self.USAGE_TRACKER_DB_USER}:"
-            f"{self.USAGE_TRACKER_DB_PASSWORD}@"
-            f"{self.USAGE_TRACKER_DB_HOST}:"
-            f"{self.USAGE_TRACKER_DB_PORT}/"
-            f"{self.USAGE_TRACKER_DB_NAME}"
-        )
+        if self.USAGE_TRACKER_DB_USER and self.USAGE_TRACKER_DB_PASSWORD and self.USAGE_TRACKER_DB_HOST and self.USAGE_TRACKER_DB_PORT and self.USAGE_TRACKER_DB_NAME:
+            return (
+                f"postgresql://{self.USAGE_TRACKER_DB_USER}:"
+                f"{self.USAGE_TRACKER_DB_PASSWORD}@"
+                f"{self.USAGE_TRACKER_DB_HOST}:"
+                f"{int(self.USAGE_TRACKER_DB_PORT)}/"
+                f"{self.USAGE_TRACKER_DB_NAME}"
+            )
+        else:
+            return None
     
     # Vector store
     HNSW_M: int = 16
@@ -104,6 +105,7 @@ class Settings(BaseSettings):
     OPENSEARCH_USERNAME: str
     OPENSEARCH_PASSWORD: str
     OPENSEARCH_HOST: str
+    OPENSEARCH_POOL_MAXSIZE: int = 10
     OPENSEARCH_INDEX_NAME: str = "sys_annual_2025_rag"
 
     # RAG
@@ -123,6 +125,7 @@ class Settings(BaseSettings):
     # Evaluation
     EVAL_DATASET_DIR: Path = BASE_DIR / "evaluation" / "dataset"
     EVAL_RESULTS_DIR: Path = BASE_DIR / "evaluation" / "results"
+    EVAL_VISUALIZATION_DIR: Path = BASE_DIR / "evaluation" / "visualization" / "outputs"
 
     # Ingestion
     CHUNK_SIZE: int = Field(default=350, gt=0)
@@ -140,6 +143,7 @@ class Settings(BaseSettings):
     # Misc
     LOG_LEVEL: LogLevel = LogLevel.INFO # DEBUG < INFO < WARNING < ERROR < CRITICAL
     USER_IN_MAX_CHARS: int = Field(default=250, gt=0)
+    BASE_DIR: Path = BASE_DIR
 
     class Config:
         env_file = ".env"

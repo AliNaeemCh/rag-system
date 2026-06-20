@@ -1,9 +1,9 @@
 from app.rag.pipeline import RAGPipeline
-from app.infra.dependencies import build_rag_pipeline
 from app.rag.config import ResponseMode
 from app.rag.chat_history import chat_history
 from app.dependencies.auth import verify_key
 from app.dependencies.rate_limiter import rate_limit
+from app.dependencies.rag_pipeline import rag_pipeline
 from app.core.config import settings
 
 import logging
@@ -34,7 +34,7 @@ class ChatResponse(BaseModel):
     ])
 async def chat_endpoint(
     request: ChatRequest,
-    pipeline: RAGPipeline = Depends(build_rag_pipeline),
+    pipeline: RAGPipeline = Depends(rag_pipeline),
 ):
     chat_history.cleanup()  # Cleans inactive sessions data
 

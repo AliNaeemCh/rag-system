@@ -3,9 +3,9 @@ setup_logging()
 
 from ingestion.chunks_generation.utils.parsers import iter_sections
 from ingestion.chunks_generation.chunker import Chunker
-from analysis.chunks.generate_chunks_stats import generate_chunks_stats
+from ingestion.chunks_generation.analysis.generate_chunks_stats import generate_chunks_stats
 from ingestion.chunks_generation.config import ChunkingConfig
-from app.core.utils import write_jsonl, reset_jsonl, find_positions, extract_last_jsonl_object, load_jsonl, build_jsonl_index
+from app.core.utils import write_jsonl, reset_jsonl, find_positions, extract_last_jsonl_object, build_jsonl_index
 from app.core.tokenizer import tokenizer
 from ingestion.chunks_generation.utils.nlp import nlp
 from app.core.config import settings

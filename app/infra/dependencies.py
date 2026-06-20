@@ -12,9 +12,9 @@ def create_hf_inference_client(hf_token: str):
     from huggingface_hub import InferenceClient
     return InferenceClient(provider="hf-inference", api_key=hf_token)
 
-def create_opensearch_client(host: str, username: str, password: str, use_ssl: bool = True, verify_certs = False):
+def create_opensearch_client(host: str, username: str, password: str, use_ssl: bool = True, verify_certs: bool = False, pool_maxsize: int = 1):
     from opensearchpy import OpenSearch
-    return OpenSearch(hosts=[host], http_auth=(username, password), use_ssl=use_ssl, verify_certs=verify_certs, pool_maxsize=10)
+    return OpenSearch(hosts=[host], http_auth=(username, password), use_ssl=use_ssl, verify_certs=verify_certs, pool_maxsize=pool_maxsize)
 
 # ML models
 def get_reranker_model(model_path: Path):
@@ -41,12 +41,13 @@ def build_rag_pipeline():
     from app.rag.generator import Generator
     from app.core.config import settings
 
-    openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY_SHARING)
+    openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY)
     llm_generator = OpenAIEngine(model_name=settings.GENERATOR_MODEL, client=openai_client, usage_tracker=usage_tracker, check_usage=False)
     llm_rewriter = OpenAIEngine(model_name=settings.REWRITER_MODEL, client=openai_client, usage_tracker=usage_tracker, check_usage=False)
     opensearch_client = create_opensearch_client(host=settings.OPENSEARCH_HOST,
                                                 username=settings.OPENSEARCH_USERNAME,
-                                                password=settings.OPENSEARCH_PASSWORD)
+                                                password=settings.OPENSEARCH_PASSWORD,
+                                                pool_maxsize=settings.OPENSEARCH_POOL_MAXSIZE)
     opensearch_store = OpenSearchStore(
         client=opensearch_client,
         index_name=settings.OPENSEARCH_INDEX_NAME,

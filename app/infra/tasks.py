@@ -5,6 +5,6 @@ import logging
 logger = logging.getLogger("app.infra.tasks")
 logger.info("Loading file...")
 
-@job(cron={"hour": 0, "minute": 0})
+@job(cron={"hour": 0, "minute": 0}, enabled=usage_tracker is not None)
 def delete_older_token_usage():
     return usage_tracker.delete_older_token_usage()

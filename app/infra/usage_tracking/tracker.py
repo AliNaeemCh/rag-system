@@ -1,7 +1,7 @@
 from app.infra.usage_tracking.buckets import Bucket
 from app.infra.usage_tracking.buckets import get_bucket, BUCKET_TO_TOKEN_LIMIT
 from app.infra.db.session import get_connection
-from app.infra.db.pool import usage_tracker_db_pool
+from app.infra.db.pool import get_usage_tracker_db_pool
 from app.infra.db.retry import db_retry
 from app.core.config import settings
 
@@ -121,5 +121,8 @@ class UsageTracker:
             if bucket == Bucket.SMALL
             else "large_bucket_tokens"
         )
-    
-usage_tracker = UsageTracker(db_pool=usage_tracker_db_pool)
+
+usage_tracker: UsageTracker | None = None
+if settings.USAGE_TRACKER_DB_URL:
+    usage_tracker_db_pool = get_usage_tracker_db_pool()
+    usage_tracker = UsageTracker(db_pool=usage_tracker_db_pool)

@@ -16,9 +16,10 @@ import math
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from collections import deque
 
-def embed_batch(embedding_model: BaseEmbeddingProvider, texts: list[str], normalize: bool = True, batch_size: int | None = None):
-    return embedding_model.embed_documents(texts, normalize=normalize, batch_size = batch_size)
+def embed_batch(embedding_provider: BaseEmbeddingProvider, texts: list[str], normalize: bool = True, batch_size: int | None = None):
+    return embedding_provider.embed_documents(texts, normalize=normalize, batch_size = batch_size)
 
 def run_pipeline(config: EmbeddingPipelineConfig, input_path: Path, output_path: Path):
     try:
@@ -28,13 +29,12 @@ def run_pipeline(config: EmbeddingPipelineConfig, input_path: Path, output_path:
 
         # Thread pool for API calls
         executor = ThreadPoolExecutor(max_workers=config.num_workers)
-        futures = []
+        futures = deque()
+        future_to_metadata = {}
 
         batch_texts = []
         batch_chunk_ids = []
         total = 0
-        total_batches = 0
-        completed_batches = 0
         last_processed_chunk_id = extract_last_jsonl_object(output_path).get("chunk_id", 0)
 
         if not config.resume:
@@ -53,20 +53,21 @@ def run_pipeline(config: EmbeddingPipelineConfig, input_path: Path, output_path:
             logger.info(f"Resuming Embedding Generation... | File = {input_path}")
 
         pbar = tqdm(total=100)
-
+        initial_progress_refresh = False
         # -------------------------
         # STREAM + BATCH + SUBMIT
         # -------------------------
-        for obj in load_jsonl(input_path):
+        for obj, progress in load_jsonl(input_path, return_progress=True):
 
             chunk_id = obj['chunk_id']
-            if config.resume:
-                if chunk_id <= last_processed_chunk_id:
-                    total += 1
-
-                    if chunk_id == last_processed_chunk_id:
-                        total_batches = completed_batches = math.ceil(total / config.batch_size)
-                    continue
+            if config.resume and chunk_id <= last_processed_chunk_id:
+                initial_progress_refresh = True
+                continue
+            
+            if initial_progress_refresh:
+                pbar.n = int(progress * 100)
+                pbar.refresh()
+                initial_progress_refresh = False
 
             content = (obj.get("content") or "").strip()
 
@@ -79,71 +80,92 @@ def run_pipeline(config: EmbeddingPipelineConfig, input_path: Path, output_path:
 
             # submit batch to worker
             if len(batch_texts) >= config.batch_size:
-                futures.append(
-                    executor.submit(
+                if len(futures) >= config.num_workers:
+                    future = futures.popleft()
+                    embeddings = future.result()
+
+                    if not embeddings:
+                        raise Exception("Undefined embedding(s)")
+
+                    objects = []
+
+                    for i in range(len(future_to_metadata[future]['chunk_ids'])):
+                        objects.append(
+                            {
+                                "chunk_id": future_to_metadata[future]['chunk_ids'][i],
+                                "embedding": embeddings[i]
+                            }
+                        )
+                    
+                    write_jsonl(objects, output_path)
+                    del future_to_metadata[future]
+
+                    pbar.n = int(progress * 100)
+                    pbar.refresh()
+                
+                future = executor.submit(
                         embed_batch,
                         embedding_provider,
                         batch_texts.copy(),
+                        normalize=True,
                         batch_size=config.batch_size
-                    )
-                )
+                        )
+                futures.append(future)
                 # store metadata aligned with this batch
-                futures[-1]._chunk_ids = batch_chunk_ids.copy()
-
-                total_batches += 1
+                future_to_metadata[future] = {
+                    "chunk_ids": batch_chunk_ids.copy()
+                }
 
                 batch_texts.clear()
                 batch_chunk_ids.clear()
 
         # -------------------------
-        # FLUSH REMAINING BATCH
+        # FLUSH REMAINING BATCH & FUTURES
         # -------------------------
         if batch_texts:
-            futures.append(
-                executor.submit(
+            future = executor.submit(
                     embed_batch,
                     embedding_provider,
                     batch_texts.copy(),
-                    normalize=True
-                )
-            )
-            futures[-1]._chunk_ids = batch_chunk_ids.copy()
-            futures[-1]._texts = batch_texts.copy()
-            total_batches += 1
+                    normalize=True,
+                    batch_size=config.batch_size
+                    )
+            futures.append(future)
+            future_to_metadata[future] = {
+                "chunk_ids": batch_chunk_ids.copy()
+            }
 
-        total_batches = total_batches or completed_batches
-        pbar.n = int((completed_batches / total_batches) * 100)
+            batch_texts.clear()
+            batch_chunk_ids.clear()
+
+            while futures:
+                future = futures.popleft()
+                embeddings = future.result()
+
+                if not embeddings:
+                    raise Exception("Undefined embedding(s)")
+
+                objects = []
+
+                for i in range(len(future_to_metadata[future]['chunk_ids'])):
+                    objects.append(
+                        {
+                            "chunk_id": future_to_metadata[future]['chunk_ids'][i],
+                            "embedding": embeddings[i]
+                        }
+                    )
+                
+                write_jsonl(objects, output_path)
+                del future_to_metadata[future]
+
+                pbar.n = 100
+                pbar.refresh()
+
+        pbar.n = 100
         pbar.refresh()
-
-        # -------------------------
-        # COLLECT RESULTS + WRITE
-        # -------------------------
-        for future in futures:  # Preserves order
-
-            embeddings = future.result()
-
-            if not embeddings:
-                raise Exception("Undefined embedding(s)")
-
-            objects = []
-
-            for i in range(len(future._chunk_ids)):
-                objects.append(
-                    {
-                        "chunk_id": future._chunk_ids[i],
-                        "embedding": embeddings[i]
-                    }
-                )
-            
-            write_jsonl(objects, output_path)
-
-            completed_batches += 1
-            pbar.n = int((completed_batches / total_batches) * 100)
-            pbar.refresh()
-
         executor.shutdown(wait=True)
 
-        logger.info(f"Embedding Generation Completed | Total Docs = {total} | Total Batches = {total_batches}")
+        logger.info(f"Embedding Generation Completed | Total Docs = {total} | Total Batches = {math.ceil(total/config.batch_size)}")
 
     except Exception as e:
         logger.exception(f"Embedding Generation Failed!")

@@ -27,14 +27,15 @@ class RAGPipeline:
             logger.info(f"User message received: {user_message}")
 
             # Usage tracking
-            model_names = [self.generator.llm.model_name]
-            if response_mode != ResponseMode.FAST:
-                model_names.append(self.rewriter.llm.model_name)
-            usage_exceeded = usage_tracker.usage_exceeded(model_names=model_names)
-            if usage_exceeded:
-                raise Exception ("Usage limit exceeded!")
-            
-            logger.info("Usage status: under limit")
+            if usage_tracker:
+                model_names = [self.generator.llm.model_name]
+                if response_mode != ResponseMode.FAST:
+                    model_names.append(self.rewriter.llm.model_name)
+                usage_exceeded = usage_tracker.usage_exceeded(model_names=model_names)
+                if usage_exceeded:
+                    raise Exception ("Usage limit exceeded!")
+                
+                logger.info("Usage status: under limit")
 
             if not eval_mode:
                 # Get chat history

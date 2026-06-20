@@ -29,7 +29,7 @@ class BaseLLMEngine(ABC):
         return_full_response: bool = False
     ):
         if self.usage_tracker and self.check_usage:
-            if self.usage_tracker.usage_exceeded(model_names=[self.model_name]):
+            if self.usage_tracker.usage_exceeded(model_names=[self.model_name], safety_margin_tokens=5000):
                 raise Exception("Usage limit exceeded!")
             
         history = history or []

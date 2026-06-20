@@ -5,7 +5,7 @@ from evaluation.dataset.generation.generator import EvalDatasetGenerator
 from app.core.utils import load_pickle, load_jsonl, extract_last_jsonl_object, reset_jsonl, write_jsonl
 from app.core.config import settings
 from evaluation.dataset.generation.config import EvalDatasetGeneratorConfig, EvalQuestionType
-from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMPT, INFERENCE_QS_GENERATOR_SYSTEM_PROMPT, OUT_OF_KNOWLEDGE_QS_GENERATOR_SYSTEM_PROMPT, QA_SCHEMA
+from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMPT, INFERENCE_QS_GENERATOR_SYSTEM_PROMPT, QA_SCHEMA
 from app.infra.usage_tracking.tracker import usage_tracker
 from app.infra.dependencies import create_openai_client
 from app.infra.llm_engines.openai.engine import OpenAIEngine
@@ -23,11 +23,13 @@ def generate_chunk_ids(eval_dataset_generator: EvalDatasetGenerator, config: Eva
     total_question_types = len(EvalQuestionType)
     questions_per_type = math.ceil(config.eval_set_size / total_question_types)
 
+    config.eval_set_size = total_question_types * questions_per_type
+
     # - Question types: factual + inference
     base_ids = eval_dataset_generator.pick_random_ids(eval_set_size=questions_per_type * 2)
 
     factual_qs_chunk_ids = base_ids[:questions_per_type]
-    inference_qs_chunk_ids = base_ids[questions_per_type:questions_per_type * 2]
+    inference_qs_chunk_ids = base_ids[questions_per_type:]
 
     eval_dataset_generator.extend_global_exclusion_ids(base_ids)
 
@@ -87,8 +89,9 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
                     completed_tasks += 1
                     if obj['example_id'] > example_id:
                         example_id = obj['example_id']
-            example_id += 1
+
             if completed_tasks > 0:
+                example_id += 1
                 logger.info("Eval dataset generation resumed")
             else:
                 logger.info("Eval dataset generation started")
@@ -116,14 +119,9 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
             futures = []
             future_to_metadata = {}
             for q_type, chunk_ids in question_type_to_chunk_ids.items():
-                if q_type == EvalQuestionType.FACTUAL:
-                    system_prompt = FACTUAL_QS_GENERATOR_SYSTEM_PROMPT
-                elif q_type == EvalQuestionType.INFERENCE:
+                system_prompt = FACTUAL_QS_GENERATOR_SYSTEM_PROMPT
+                if q_type == EvalQuestionType.INFERENCE:
                     system_prompt = INFERENCE_QS_GENERATOR_SYSTEM_PROMPT
-                elif q_type == EvalQuestionType.OUT_OF_KNOWLEDGE:
-                    system_prompt = OUT_OF_KNOWLEDGE_QS_GENERATOR_SYSTEM_PROMPT
-                elif q_type == EvalQuestionType.MULTI_CHUNK:
-                    system_prompt = FACTUAL_QS_GENERATOR_SYSTEM_PROMPT
                 for chunk_id in chunk_ids:
                     if isinstance(chunk_id, int):
                         chunk_id = [chunk_id]
@@ -136,7 +134,6 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
                         "chunk_ids": chunk_id,
                         "question_type": q_type.value
                     }
-
             # 2. Process as they complete
             for future in as_completed(futures):
                 result = future.result()
@@ -154,15 +151,15 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
                 example_id += 1
                 pbar.n = int((completed_tasks / total_tasks) * 100)
                 pbar.refresh()
+        logger.exception("Eval dataset generation completed")
     except Exception:
         logger.exception("Eval dataset generation failed!")
 
 chunks_index = load_pickle(file_path=settings.PROCESSED_DATA_DIR / "chunks_jsonl_index.pkl")
 chunks_path = settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl"
 dataset_path = settings.EVAL_DATASET_DIR / "eval_dataset.jsonl"
-
 config = EvalDatasetGeneratorConfig(resume=True)
-openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY_SHARING)
+openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY)
 eval_dataset_generator_llm = OpenAIEngine(model_name=settings.EVAL_DATASET_GENERATOR_LLM, client = openai_client, usage_tracker=usage_tracker)
 eval_dataset_generator = EvalDatasetGenerator(chunks_index=chunks_index, chunks_path=chunks_path, llm=eval_dataset_generator_llm, min_chunk_tokens=settings.CHUNK_SIZE // 2, seed=config.seed)
 

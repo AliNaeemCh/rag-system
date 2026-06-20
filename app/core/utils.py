@@ -104,6 +104,16 @@ def write_json(data: dict | list[dict], output_path: Path):
                 indent=2
             )
 
+def read_json(input_path: Path) -> dict | list[dict]:
+    """
+    Reads structured records from a JSON file.
+    """
+
+    with open(input_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    return data
+
 def find_positions(text: str, pattern: str | list[str] | re.Pattern, find_first=False) -> list[int] | int | None:
     """
     Returns start positions of all matches of a string, list of strings, or regex pattern.

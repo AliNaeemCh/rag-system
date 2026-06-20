@@ -14,7 +14,7 @@ class EvalQuestionType(str, Enum):
 
 @dataclass(slots=True)
 class EvalDatasetGeneratorConfig:
-    eval_set_size: int = 200
+    eval_set_size: int = 201
     multi_chunk_max_qs: int = settings.FINAL_TOP_K
     num_workers: int = 3
     seed: int = 11

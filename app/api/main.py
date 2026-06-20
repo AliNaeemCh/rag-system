@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.middleware.payload_limit import PayloadLimitMiddleware
 from app.infra.scheduling.scheduler import scheduler, start_scheduler
 from app.infra.executor import executor
-
+import app.dependencies.rag_pipeline    # Loads RAG pipeline
 
 import logging
 logger = logging.getLogger("app.api.main")

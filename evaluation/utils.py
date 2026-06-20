@@ -21,18 +21,14 @@ def get_eval_results_obj():
     }
 
     generation_result_obj = {
-        "correctness": {
+        "reference_coverage": {
             "sum": 0,
             "values": 0
         },
         "faithfulness": {
             "sum": 0,
             "values": 0
-        },
-        "relevance": {
-            "sum": 0,
-            "values": 0
-        },
+        }
     }  
 
     eval_results = {
@@ -49,8 +45,7 @@ def get_eval_results_obj():
     for q_type in EvalQuestionType:
 
         if q_type != EvalQuestionType.MULTI_CHUNK.value:
-            if q_type != EvalQuestionType.OUT_OF_KNOWLEDGE:
-                eval_results['retrieval']['question_type_to_result'][q_type.value] = copy.deepcopy(retrieval_result_obj)
+            eval_results['retrieval']['question_type_to_result'][q_type.value] = copy.deepcopy(retrieval_result_obj)
             eval_results['generation']['question_type_to_result'][q_type.value] = copy.deepcopy(generation_result_obj)
 
         else:
@@ -69,78 +64,65 @@ def get_eval_results_obj():
     return eval_results
 
 def update_eval_results(eval_results: dict, new_result: dict) -> None:
-    if new_result.get("retrieval_results"):
-
-        mrr = new_result['retrieval_results']['mrr']
-        recall_k = new_result['retrieval_results']['recall_k']
-
-        if new_result['question_type'] != EvalQuestionType.MULTI_CHUNK.value:
-            # MRR
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]['mrr']['sum'] += mrr
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]['mrr']['values'] += 1
-            # Recall@k
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]['recall_k']['sum'] += recall_k
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]['recall_k']['values'] += 1
-        
-        else:
-            num_chunks = len(new_result['relevant_doc_ids'])
-            # MRR
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['mrr']['sum'] += mrr
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['mrr']['values'] += 1
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["avg_result"]['mrr']['sum'] += mrr
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["avg_result"]['mrr']['values'] += 1
-            # Recall@k
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['recall_k']['sum'] += recall_k
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['recall_k']['values'] += 1
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["avg_result"]['recall_k']['sum'] += recall_k
-            eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["avg_result"]['recall_k']['values'] += 1
-
-        eval_results['retrieval']['final_result']['mrr']['sum'] += mrr
-        eval_results['retrieval']['final_result']['mrr']['values'] += 1
-        eval_results['retrieval']['final_result']['recall_k']['sum'] += recall_k
-        eval_results['retrieval']['final_result']['recall_k']['values'] += 1
-
-    correctness = new_result['generation_results']['correctness']['correctness']
-    faithfulness = new_result['generation_results']['faithfulness']['faithfulness']
-    relevance = new_result['generation_results']['relevance']['relevance']
+    mrr = new_result['retrieval_results']['mrr']
+    recall_k = new_result['retrieval_results']['recall_k']
 
     if new_result['question_type'] != EvalQuestionType.MULTI_CHUNK.value:
-        # Correctness
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]['correctness']['sum'] += correctness
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]['correctness']['values'] += 1
+        # MRR
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]['mrr']['sum'] += mrr
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]['mrr']['values'] += 1
+        # Recall@k
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]['recall_k']['sum'] += recall_k
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]['recall_k']['values'] += 1
+    
+    else:
+        num_chunks = len(new_result['relevant_doc_ids'])
+        # MRR
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['mrr']['sum'] += mrr
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['mrr']['values'] += 1
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["avg_result"]['mrr']['sum'] += mrr
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["avg_result"]['mrr']['values'] += 1
+        # Recall@k
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['recall_k']['sum'] += recall_k
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['recall_k']['values'] += 1
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["avg_result"]['recall_k']['sum'] += recall_k
+        eval_results['retrieval']['question_type_to_result'][new_result['question_type']]["avg_result"]['recall_k']['values'] += 1
+
+    eval_results['retrieval']['final_result']['mrr']['sum'] += mrr
+    eval_results['retrieval']['final_result']['mrr']['values'] += 1
+    eval_results['retrieval']['final_result']['recall_k']['sum'] += recall_k
+    eval_results['retrieval']['final_result']['recall_k']['values'] += 1
+
+    reference_coverage = new_result['generation_results']['reference_coverage']['reference_coverage']
+    faithfulness = new_result['generation_results']['faithfulness']['faithfulness']
+
+    if new_result['question_type'] != EvalQuestionType.MULTI_CHUNK.value:
+        # Reference coverage
+        eval_results['generation']['question_type_to_result'][new_result['question_type']]['reference_coverage']['sum'] += reference_coverage
+        eval_results['generation']['question_type_to_result'][new_result['question_type']]['reference_coverage']['values'] += 1
         # Faithfulness
         eval_results['generation']['question_type_to_result'][new_result['question_type']]['faithfulness']['sum'] += faithfulness
         eval_results['generation']['question_type_to_result'][new_result['question_type']]['faithfulness']['values'] += 1
-        # Relevance
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]['relevance']['sum'] += relevance
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]['relevance']['values'] += 1
 
     
     else:
         num_chunks = len(new_result['relevant_doc_ids'])
 
-        # Correctness
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['correctness']['sum'] += correctness
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['correctness']['values'] += 1
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]["avg_result"]['correctness']['sum'] += correctness
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]["avg_result"]['correctness']['values'] += 1
+        # Reference coverage
+        eval_results['generation']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['reference_coverage']['sum'] += reference_coverage
+        eval_results['generation']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['reference_coverage']['values'] += 1
+        eval_results['generation']['question_type_to_result'][new_result['question_type']]["avg_result"]['reference_coverage']['sum'] += reference_coverage
+        eval_results['generation']['question_type_to_result'][new_result['question_type']]["avg_result"]['reference_coverage']['values'] += 1
         # Faithfulness
         eval_results['generation']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['faithfulness']['sum'] += faithfulness
         eval_results['generation']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['faithfulness']['values'] += 1
         eval_results['generation']['question_type_to_result'][new_result['question_type']]["avg_result"]['faithfulness']['sum'] += faithfulness
         eval_results['generation']['question_type_to_result'][new_result['question_type']]["avg_result"]['faithfulness']['values'] += 1
-        # Relevance
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['relevance']['sum'] += relevance
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]["num_chunks_to_result"][num_chunks]['relevance']['values'] += 1
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]["avg_result"]['relevance']['sum'] += relevance
-        eval_results['generation']['question_type_to_result'][new_result['question_type']]["avg_result"]['relevance']['values'] += 1
 
-    eval_results['generation']['final_result']['correctness']['sum'] += correctness
-    eval_results['generation']['final_result']['correctness']['values'] += 1
+    eval_results['generation']['final_result']['reference_coverage']['sum'] += reference_coverage
+    eval_results['generation']['final_result']['reference_coverage']['values'] += 1
     eval_results['generation']['final_result']['faithfulness']['sum'] += faithfulness
     eval_results['generation']['final_result']['faithfulness']['values'] += 1
-    eval_results['generation']['final_result']['relevance']['sum'] += relevance
-    eval_results['generation']['final_result']['relevance']['values'] += 1
 
 def aggregate_eval_results(eval_results: dict) -> None:
     # Retrieval
@@ -160,25 +142,21 @@ def aggregate_eval_results(eval_results: dict) -> None:
     # Generation
     for q_type, results in eval_results['generation']['question_type_to_result'].items():
         if q_type != EvalQuestionType.MULTI_CHUNK:
-            results['correctness']['correctnesss'] = results['correctness']['sum'] / results['correctness']['values']
+            results['reference_coverage']['reference_coverage'] = results['reference_coverage']['sum'] / results['reference_coverage']['values']
             results['faithfulness']['faithfulness'] = results['faithfulness']['sum'] / results['faithfulness']['values']
-            results['relevance']['relevance'] = results['relevance']['sum'] / results['relevance']['values']
         else:
             for num_chunks, results_2 in results['num_chunks_to_result'].items():
-                results_2['correctness']['correctness'] = results_2['correctness']['sum'] / results_2['correctness']['values']
+                results_2['reference_coverage']['reference_coverage'] = results_2['reference_coverage']['sum'] / results_2['reference_coverage']['values']
                 results_2['faithfulness']['faithfulness'] = results_2['faithfulness']['sum'] / results_2['faithfulness']['values']
-                results_2['relevance']['relevance'] = results_2['relevance']['sum'] / results_2['relevance']['values']
 
     multi_chunk_gen_avg_result_obj = eval_results['generation']['question_type_to_result'][EvalQuestionType.MULTI_CHUNK.value]['avg_result']
-    multi_chunk_gen_avg_result_obj['correctness']['correctness'] = multi_chunk_gen_avg_result_obj['correctness']['sum'] / multi_chunk_gen_avg_result_obj['correctness']['values']
+    multi_chunk_gen_avg_result_obj['reference_coverage']['reference_coverage'] = multi_chunk_gen_avg_result_obj['reference_coverage']['sum'] / multi_chunk_gen_avg_result_obj['reference_coverage']['values']
     multi_chunk_gen_avg_result_obj['faithfulness']['faithfulness'] = multi_chunk_gen_avg_result_obj['faithfulness']['sum'] / multi_chunk_gen_avg_result_obj['faithfulness']['values']
-    multi_chunk_gen_avg_result_obj['relevance']['relevance'] = multi_chunk_gen_avg_result_obj['relevance']['sum'] / multi_chunk_gen_avg_result_obj['relevance']['values']
 
     # Final result
     eval_results['retrieval']['final_result']['mrr']['mrr'] = eval_results['retrieval']['final_result']['mrr']['sum'] / eval_results['retrieval']['final_result']['mrr']['values']
     eval_results['retrieval']['final_result']['recall_k']['recall_k'] = eval_results['retrieval']['final_result']['recall_k']['sum'] / eval_results['retrieval']['final_result']['recall_k']['values']
 
-    eval_results['generation']['final_result']['correctness']['correctness'] = eval_results['generation']['final_result']['correctness']['sum'] / eval_results['generation']['final_result']['correctness']['values']
+    eval_results['generation']['final_result']['reference_coverage']['reference_coverage'] = eval_results['generation']['final_result']['reference_coverage']['sum'] / eval_results['generation']['final_result']['reference_coverage']['values']
     eval_results['generation']['final_result']['faithfulness']['faithfulness'] = eval_results['generation']['final_result']['faithfulness']['sum'] / eval_results['generation']['final_result']['faithfulness']['values']
-    eval_results['generation']['final_result']['relevance']['relevance'] = eval_results['generation']['final_result']['relevance']['sum'] / eval_results['generation']['final_result']['relevance']['values']
         

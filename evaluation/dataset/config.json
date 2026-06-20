@@ -1,0 +1,227 @@
+[
+  {
+    "response_mode": "advanced",
+    "embedding_model": "all-mpnet-base-v2",
+    "rewriter": {
+      "model": "gpt-5.4-nano",
+      "temperature": 0,
+      "system_prompt": "You are a *message rewriter* for a RAG system.\n\nRewrite the user’s message so it is self-contained and understandable without prior context, while preserving original intent and tone.\n\n### Rules:\n\n* Do not answer or explain the message.\n* Do not quote user messages or assistant replies from the chat history (if available).\n* Do not add new information or make assumptions.\n* Resolve vague references (e.g., “it”, “this”, “that”) when their meaning is clearly implied by context.\n* Expand abbreviations and acronyms into their full forms when their meaning is clear from the message or context.\n* If the message is already clear, return it unchanged.\n* Provide 3–8 keywords representing the main focus of the user message (nouns or noun phrases only), using synonyms or alternate phrasings where possible. Do not introduce new meaning or answer the message through the keywords.",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "rewritten_message": {
+            "type": "string",
+            "description": "Self-contained rewritten version of the user message"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "3–8 topic keywords"
+          }
+        },
+        "required": [
+          "rewritten_message",
+          "keywords"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "reranker_model": "ms-marco-MiniLM-L12-v2",
+    "generator": {
+      "model": "gpt-5.4-mini",
+      "temperature": 0,
+      "system_prompt": "You are a grounded Q&A assistant for Systems Limited, a global IT services and software company providing digital transformation and technology solutions.\n\nInstructions:\n- Be concise, factual, polite, human, and natural.\n- Avoid one-word or fragment answers. Always respond in at least one complete, natural sentence, even when the answer is very short.\n- Avoid redundancy or repeating the same information in different words.\n- Answer strictly using only facts present in the context (provided below); treat the context as the sole source of truth.\n- Treat the provided context as partial and non-exhaustive; do not infer completeness from it. For example, if 5 employees are shown, do not state or imply there are only 5 employees, as the context may be incomplete.\n- If something is not stated in the context directly but can be inferred with high confidence, say so cautiously.\n- Answer directly and naturally. Do not preface answers with phrases like \"The available information states\", \"According to the context\", \"Based on the provided information\", or similar source-referencing language.\n- Never mention the existence of the context, source material, or provided information.\n- If the provided context does not directly answer the question, do not include tangential, loosely related, or irrelevant details from it; instead, state that the answer is not available or something like \"I couldn’t find details about that.\"\n- If the user’s question is not related to Systems Limited or the provided context, respond briefly that you can only assist with questions about Systems Limited and redirect the user back to relevant topics in a very polite and helpful tone.\n- For unexplained terms mentioned in the context, provide a brief common-knowledge explanation for low-risk topics only if the user explicitly asks for it.\n- Do not invent, assume, or distort facts.\n- If multiple interpretations are possible, present them neutrally.\n- Do not comment on the structure, sections, coverage, or location of information in the provided context, or whether the answer appears or does not appear in specific sections.\n- Use short paragraphs or bullets only when helpful.\n- End each response with a brief, natural offer to help further, suggesting only related information from the provided context tied to the user’s question.\n\nContext:\n\"\"\"\n{retrieved_context}\n\"\"\""
+    },
+    "hnsw_index": {
+      "m": 16,
+      "ef_construction": 64,
+      "ef_search": 40
+    },
+    "chunking": {
+      "chunk_size": 350,
+      "chunk_overlap_pct": 15,
+      "cross_section_overlap": false,
+      "overlap_granularity": "sentence_based"
+    },
+    "top_ks": {
+      "dense_retrieval": 50,
+      "sparse_retrieval": 30,
+      "fused": 20,
+      "final": 5
+    },
+    "eval_llm_judge": {
+      "model": "gpt-5.4-mini",
+      "retrieval": {
+        "model": "gpt-5.4-mini",
+        "temperature": 0,
+        "system_prompt": "You are given a context and one or more questions. Each question is annotated with a question ID, and a reference answer is also provided for each question.\n\nYour task is to determine which questions can be answered using only the provided context, where the answer derived from the context agrees with the reference answer.\n\nA question can be answered if its answer is:\n- explicitly stated in the context, or\n- can be logically inferred or derived from the context,\n\nand the derived answer is consistent with the reference answer.\n\nConsistency does not require exact wording, format, or numerical representation; differences in expression, rounding, or granularity should be ignored as long as the underlying answer aligns.\n\nDo not use any outside knowledge; treat the context as the sole source of truth.",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "questions": {
+              "type": "array",
+              "description": "Evaluation of each question against the provided context.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Question ID."
+                  },
+                  "answerable": {
+                    "type": "boolean",
+                    "description": "Whether this question can be answered from the context, such that the answer derived from the context agrees with the reference answer."
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "description": "Concise one-line evidence supporting the decision."
+                  }
+                },
+                "required": [
+                  "id",
+                  "answerable",
+                  "evidence"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "questions"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "generation": {
+        "model": "gpt-5.4-mini",
+        "temperature": 0,
+        "recall_coverage": {
+          "system_prompt": "You are an evaluation model that measures **reference coverage only**.\n\nYour task is to determine how much of the **reference answer’s factual content** is present in the **generated answer**.\n\nFirst, break the reference answer into a list of distinct factual points. Each point should represent one clear fact or claim.\n\nThen, for each factual point, check whether it is present in the generated answer.\n\nGuidelines:\n\n* Focus only on whether each factual point appears in the generated answer.\n* Ignore extra information in the generated answer that is not present in the reference.\n* Approximate matches are allowed:\n\n  * Different wording is acceptable.\n  * Differences in format, phrasing, or structure are acceptable.\n  * Numerical values that are equivalent but expressed differently (e.g., rounded, scaled, or reformatted) should still be considered a match.\n* Only mark a point as not present if it is clearly absent or meaningfully different.\n* Do not count partial or ambiguous references as a match.\n\nFor each factual point, record whether it exists in the generated answer and provide brief evidence from the generated answer supporting your decision.\n\nReturn the output according to the defined schema.",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "points": {
+                "type": "array",
+                "description": "Factual points and their coverage evaluation.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "point": {
+                      "type": "string",
+                      "description": "Factual point from reference answer."
+                    },
+                    "exists": {
+                      "type": "boolean",
+                      "description": "Whether the point appears in the generated answer."
+                    },
+                    "evidence": {
+                      "type": "string",
+                      "description": "One-line justification explaining why the correctness label was assigned."
+                    }
+                  },
+                  "required": [
+                    "point",
+                    "exists",
+                    "evidence"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "points"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "faithfulness": {
+          "system_prompt": "You are an evaluation model. Evaluate faithfulness only.\n\nFaithfulness = factual consistency between the generated answer and the retrieved context.\n\nStep 1 — Extract Points:\nExtract all distinct factual points from the generated answer.\n\nStep 2 — Relevance:\nFor each point, determine whether it directly answers the specific question asked.\n\n* Set `relevant = true` only if the point provides an explicit answer value that satisfies the exact question asked, meaning it fills the required slot with the requested information (e.g., correct entity, number, date, metric, event, or result matching the question’s subject, attribute, and timeframe).\n* Set `relevant = false` if the point does not provide an actual answer value, including cases where it restates or refers to the question without answering it, states or implies the answer is missing/unknown/not available/not stated/not found, provides explanations, reasoning, or context instead of the answer, includes unrelated or off-topic content, offers substitute or alternative information in place of the requested answer, or contains follow-up advice, suggestions, or next-step instructions.\n\nFor each relevance decision, provide a one-line concise `relevance_evidence` explaining why the label was assigned.\n\nStep 3 — Correctness:\nFor each point, evaluate correctness.\n\n- Set `correct = true` if the point is supported by or consistent with the retrieved context; differences in wording, format, or numerical representation (including scaled or rounded forms) should not be treated as disagreement.\n- Otherwise set `correct = false`.\n\nFor each correctness decision, provide a one-line concise `correctness_evidence` explaining why the label was assigned.\n\nStep 4 — Output:\nReturn the output according to the defined schema.",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "points": {
+                "type": "array",
+                "description": "Distinct factual points extracted from the generated answer.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "point": {
+                      "type": "string",
+                      "description": "A factual statement extracted from the generated answer."
+                    },
+                    "relevant": {
+                      "type": "boolean",
+                      "description": "Whether the point directly answers the specific question asked."
+                    },
+                    "relevance_evidence": {
+                      "type": "string",
+                      "description": "One-line justification explaining why the relevance label was assigned."
+                    },
+                    "correct": {
+                      "type": "boolean",
+                      "description": "Whether the point is broadly supported by or consistent with the retrieved context."
+                    },
+                    "correctness_evidence": {
+                      "type": "string",
+                      "description": "One-line justification explaining why the correctness label was assigned."
+                    }
+                  },
+                  "required": [
+                    "point",
+                    "relevant",
+                    "relevance_evidence",
+                    "correct",
+                    "correctness_evidence"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "points"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "retrieval_eval_temperature": 0,
+        "generation_eval_temperature": 0
+      }
+    },
+    "dataset": {
+      "generation_llm": {
+        "model": "gpt-5.4",
+        "temperature": 1
+      },
+      "total_question_types": 3,
+      "question_types": [
+        "factual",
+        "inference",
+        "multi_chunk"
+      ],
+      "system_prompts": {
+        "factual, multi_chunk": "You are a question-generation assistant.  \n\nTask: Look at the given text chunk and create a question based on it that is factual in nature.\n\nRequirements:\n- Phrase the question naturally, as a human would ask it.\n- Formulate the question in natural language rather than mirroring the chunk's wording, unless specific terms are important to preserve.\n- Write the question as if the chunk is NOT available; do not refer to the chunk or its content; instead, fully include all necessary entities, subjects, and context explicitly so the question is self-contained and understandable without any external text.\n- Avoid context-dependent words or phrases (e.g., pronouns like this/that/these/those or relative time expressions like today/recently); ensure all references are explicit.\n- Do not ask questions that require making global comparisons or generalizations (e.g., largest, smallest, most, least, highest, lowest).\n- Keep the question concise, and specific.\n- The answer must be explicitly stated in the chunk.\n- The answer must be an exact word or short phrase taken directly from the chunk text, with no paraphrasing or alteration.",
+        "inference": "You are a question-generation assistant.  \n\nTask: Look at the given text chunk and create a question based on it that requires inference.\n\nRequirements:\n- Phrase the question naturally, as a human would ask it.\n- Formulate the question in natural language rather than mirroring the chunk's wording, unless specific terms are important to preserve.\n- Write the question as if the chunk is NOT available; do not refer to the chunk or its content; instead, fully include all necessary entities, subjects, and context explicitly so the question is self-contained and understandable without any external text.\n- Avoid context-dependent words or phrases (e.g., pronouns like this/that/these/those or relative time expressions like today/recently); ensure all references are explicit.\n- Do not ask questions that require making global comparisons or generalizations (e.g., largest, smallest, most, least, highest, lowest).\n- Keep the question concise, and specific.\n- The answer must NOT appear in the chunk as a verbatim phrase, but it must be directly inferable from it by either paraphrasing or reasoning over the stated facts.\n- Do not generate purely computational questions based on numeric operations (e.g., addition, subtraction, multiplication, division, percentages, or reversing a calculation). Questions must require understanding of the content rather than arithmetic.\n- Questions must be specific and grounded in the concrete entities mentioned in the chunk. Avoid generic placeholders or indefinite references such as \"a company\", \"an organization\", \"a person\", or \"a product\" when a specific entity is available.\n- The answer must be a short, precise phrase expressing that inferred fact.\n\nExample:\nChunk: \"The Eiffel Tower was completed in 1889 in Paris.\"\nQuestion: \"During which century was the Eiffel Tower completed?\""
+      },
+      "schema": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "A self-contained question."
+          },
+          "answer": {
+            "type": "string",
+            "description": "A precise, concrete answer."
+          }
+        },
+        "required": [
+          "question",
+          "answer"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+]

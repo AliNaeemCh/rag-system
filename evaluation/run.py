@@ -13,10 +13,9 @@ from evaluation.generation_eval import GenerationEvaluator
 from evaluation.dataset.generation.config import EvalQuestionType
 from app.infra.llm_engines.openai.engine import OpenAIEngine
 from app.prompts.retrieval_evaluator import ANSWERABLE_QS_SYSTEM_PROMPT, ANSWERABLE_QS_SCHEMA
-from app.prompts.generation_evaluator import CORRECTNESS_EVAL_SYSTEM_PROMPT, CORRECTNESS_EVAL_SCHEMA, \
-                                            FAITHFULNESS_EVAL_SYSTEM_PROMPT, FAITHFULNESS_EVAL_SCHEMA, \
-                                            RELEVANCE_EVAL_SYSTEM_PROMPT, RELEVANCE_EVAL_SCHEMA
-from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMPT, INFERENCE_QS_GENERATOR_SYSTEM_PROMPT
+from app.prompts.generation_evaluator import REFERENCE_COVERAGE_EVAL_SYSTEM_PROMPT, REFERENCE_COVERAGE_EVAL_SCHEMA, \
+                                            FAITHFULNESS_EVAL_SYSTEM_PROMPT, FAITHFULNESS_EVAL_SCHEMA
+from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMPT, INFERENCE_QS_GENERATOR_SYSTEM_PROMPT, QA_SCHEMA
 from evaluation.dataset.generation.config import EvalQuestionType
 from evaluation.dataset.generation.config import EvalDatasetGeneratorConfig
 from evaluation.utils import update_eval_results, aggregate_eval_results, get_eval_results_obj
@@ -28,7 +27,6 @@ logger.info("Loading file...")
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from tqdm import tqdm
-import copy
 
 def process_example(rag_pipeline: RAGPipeline,
                     retrieval_eval: RetrievalEvaluator,
@@ -69,13 +67,12 @@ def process_example(rag_pipeline: RAGPipeline,
     )
 
     # Generation eval
-    correctness_result = generation_eval.evaluate_correctness(
-        question_type=question_type,
+    reference_coverage_result = generation_eval.evaluate_reference_coverage(
         questions=questions,
         reference_answers=reference_answers,
         generated_answer=generated_answer,
-        system_prompt=CORRECTNESS_EVAL_SYSTEM_PROMPT,
-        output_schema=CORRECTNESS_EVAL_SCHEMA,
+        system_prompt=REFERENCE_COVERAGE_EVAL_SYSTEM_PROMPT,
+        output_schema=REFERENCE_COVERAGE_EVAL_SCHEMA,
         temperature=generation_eval_temperature
     )
 
@@ -85,14 +82,6 @@ def process_example(rag_pipeline: RAGPipeline,
         generated_answer=generated_answer,
         system_prompt=FAITHFULNESS_EVAL_SYSTEM_PROMPT,
         output_schema=FAITHFULNESS_EVAL_SCHEMA,
-        temperature=generation_eval_temperature
-    )
-
-    relevance_result = generation_eval.evaluate_relevance(
-        questions=questions,
-        generated_answer=generated_answer,
-        system_prompt=RELEVANCE_EVAL_SYSTEM_PROMPT,
-        output_schema=RELEVANCE_EVAL_SCHEMA,
         temperature=generation_eval_temperature
     )
 
@@ -106,9 +95,8 @@ def process_example(rag_pipeline: RAGPipeline,
         "retrieved_doc_ids": [doc.id for doc in retrieved_docs],
         "retrieval_results": retrieval_results,
         "generation_results": {
-            "correctness": correctness_result,
-            "faithfulness": faithfulness_result,
-            "relevance": relevance_result
+            "reference_coverage": reference_coverage_result,
+            "faithfulness": faithfulness_result
         }
     }
 
@@ -117,8 +105,9 @@ def run_pipeline(config: EvalConfig,
                  retrieval_eval: RetrievalEvaluator,
                  generation_eval: GenerationEvaluator,
                  dataset_path: Path,
+                 config_path: Path,
                  raw_result_path: Path,
-                 final_result_path: Path):
+                 final_result_path: Path,):
     try:
         def create_config_object():
 
@@ -166,11 +155,23 @@ def run_pipeline(config: EvalConfig,
                         "retrieval": {
                             "model": settings.LLM_JUDGE_MODEL,
                             "temperature": config.retrieval_eval_temperature,
-                            "system_prompt": ANSWERABLE_QS_SYSTEM_PROMPT
-                        }
+                            "system_prompt": ANSWERABLE_QS_SYSTEM_PROMPT,
+                            "schema": ANSWERABLE_QS_SCHEMA
+                        },
+                        "generation": {
+                            "model": settings.LLM_JUDGE_MODEL,
+                            "temperature": config.generation_eval_temperature,
+                            "recall_coverage": {
+                                "system_prompt": REFERENCE_COVERAGE_EVAL_SYSTEM_PROMPT,
+                                "schema": REFERENCE_COVERAGE_EVAL_SCHEMA
+                            },
+                            "faithfulness": {
+                                "system_prompt": FAITHFULNESS_EVAL_SYSTEM_PROMPT,
+                                "schema": FAITHFULNESS_EVAL_SCHEMA
+                        },
                         "retrieval_eval_temperature": config.retrieval_eval_temperature,
                         "generation_eval_temperature": config.generation_eval_temperature
-                    },
+                    }},
                     "dataset": {
                         "generation_llm": {
                             "model": settings.EVAL_DATASET_GENERATOR_LLM,
@@ -181,7 +182,8 @@ def run_pipeline(config: EvalConfig,
                         "system_prompts": {
                             f"{EvalQuestionType.FACTUAL.value}, {EvalQuestionType.MULTI_CHUNK.value}": FACTUAL_QS_GENERATOR_SYSTEM_PROMPT,
                             EvalQuestionType.INFERENCE.value: INFERENCE_QS_GENERATOR_SYSTEM_PROMPT
-                        }
+                        },
+                        "schema": QA_SCHEMA
                     }
                 }
             )
@@ -195,9 +197,8 @@ def run_pipeline(config: EvalConfig,
 
         if config.resume:
             for obj in load_jsonl(path=raw_result_path):
-                if obj.get('example_id'):
-                    update_eval_results(eval_results, new_result=obj)
-                    completed_example_ids.append(obj['example_id'])
+                update_eval_results(eval_results, new_result=obj)
+                completed_example_ids.append(obj['example_id'])
             if len(completed_example_ids) > 0:
                 logger.info("Evaluation resumed")
             else:
@@ -218,9 +219,9 @@ def run_pipeline(config: EvalConfig,
             
         if not last_obj:
             config_obj = create_config_object()
-            write_jsonl(
+            write_json(
                 data=config_obj,
-                output_path=raw_result_path
+                output_path=config_path
             )
 
         pbar = tqdm(total=100)
@@ -310,7 +311,7 @@ def run_pipeline(config: EvalConfig,
 
 config = EvalConfig(resume=True)
 rag_pipeline = build_rag_pipeline()
-openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY_SHARING)
+openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY)
 llm_judge = OpenAIEngine(model_name=settings.LLM_JUDGE_MODEL, client=openai_client, usage_tracker=usage_tracker)
 
 retrieval_eval = RetrievalEvaluator(llm_judge=llm_judge, system_prompt=ANSWERABLE_QS_SYSTEM_PROMPT, llm_output_schema=ANSWERABLE_QS_SCHEMA)
@@ -322,6 +323,7 @@ run_pipeline(
     retrieval_eval=retrieval_eval,
     generation_eval=generation_eval,
     dataset_path=settings.EVAL_DATASET_DIR / "eval_dataset.jsonl",
+    config_path=settings.EVAL_DATASET_DIR / "config.json",
     raw_result_path=settings.EVAL_RESULTS_DIR / "raw_results.jsonl",
     final_result_path=settings.EVAL_RESULTS_DIR / "final_result.json"
 )

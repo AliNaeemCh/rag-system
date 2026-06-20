@@ -1,7 +1,7 @@
 from app.core.utils import write_json
 
 import logging
-logger = logging.getLogger("analysis.chunks.generate_chunks_stats")
+logger = logging.getLogger("ingestion.chunks_generation.analysis.generate_chunks_stats")
 logger.info("Loading file...")
 
 import json
