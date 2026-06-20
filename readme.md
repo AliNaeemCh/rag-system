@@ -1,6 +1,6 @@
 # Retrieval-Augmented Generation (RAG) System
 
-A document question-answering system built with a RAG pipeline that combines hybrid retrieval (dense vector search and BM25), reranking, and large language models to generate grounded responses.
+A document question-answering system built on the **Systems Limited 2025 Annual Financial Report** using a RAG pipeline that combines hybrid retrieval (dense vector search and BM25), reranking, and large language models to generate grounded responses.
 
 The pipeline includes document ingestion, PDF processing, chunking, embedding generation, retrieval, context selection, answer generation, and evaluation.
 
@@ -70,6 +70,18 @@ Example:
   }
 }
 ```
+
+### Chunking Analysis
+
+The chunking pipeline was analyzed to verify the resulting chunk size distribution and overlap behavior.
+
+The following visualizations show the token distribution of generated chunks and the applied overlap between consecutive chunks:
+
+![Chunk Token Distribution](ingestion/chunks_generation/analysis/results/chunk_tokens_hist.png)
+
+![Chunk Overlap Distribution](ingestion/chunks_generation/analysis/results/chunk_overlap_hist.png)
+
+The distributions show that generated chunks adhere to the configured token constraints, while overlap generally remains within the defined limit. Occasional deviations occur when the last sentence of the previous chunk exceeds the available overlap allowance; in such cases, the complete sentence is preserved in the next chunk to maintain continuity, slightly exceeding the configured overlap limit.
 
 ### Embedding Generation
 
@@ -339,10 +351,3 @@ python -m evaluation.run
 ```
 
 Evaluation results and visualizations are generated under the `evaluation` directory.
-
-
-
-
-
-
-

@@ -28,7 +28,7 @@ class Chunker:
     def chunk_sections(self, sections_sentences: list[list[str]], metadata: list[dict] | None = None) -> list[str]:
         """
         CHUNKING METHODOLOGY:
-        * Each chunk always stays within the defined `chunk_size` token limit.
+        * Each chunk adheres to the defined `chunk_size` token limit, with rare exceptions.
         * It is ensured that no chunk ends mid-sentence.
         * No two H1-level sections are merged into one chunk.
         * H2-level sections are also kept separate by default unless their size is too small in which case they are merged upto 50% of effective chunk size (`chunk_size-overlap_tokens_count`).
@@ -68,8 +68,7 @@ class Chunker:
         overlap_tokens_count = round(self.config.chunk_size * (self.config.chunk_overlap_pct / 100))
         if self.config.separate_h2s:
             max_merging_threshold = round((self.config.chunk_size - overlap_tokens_count) * 0.5)    # 50% of effective chunk size
-            # Makes sure too small sections (possibly titles only or one-liner intros) are are always merged with other sections
-            abs_max_tokens_for_section_merging = 50    
+            abs_max_tokens_for_section_merging = 50     # Makes sure too small sections (possibly titles only or one-liner intros) are are always merged with other sections    
         else:
             max_merging_threshold = float('inf')
             abs_max_tokens_for_section_merging = float('inf')
