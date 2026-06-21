@@ -27,7 +27,7 @@ Depending on the selected response mode, the pipeline applies different levels o
 The ingestion workflow transforms source documents into indexed representations for retrieval. The complete process is illustrated below:
 
 <p align="center">
-  <img src=".github/assets/Ingestion.png" alt="Description" width="550">
+  <img src=".github/assets/Ingestion.png" alt="Ingestion" width="550">
 </p>
 
 The pipeline is organized into modular stages that can be executed separately and resumed from their intermediate outputs:
@@ -88,11 +88,11 @@ The chunking pipeline was analyzed to verify the resulting chunk size distributi
 The following visualizations show the token distribution of generated chunks and the applied overlap between consecutive chunks:
 
 <p align="center">
-  <img src="ingestion/chunks_generation/analysis/results/chunk_tokens_hist.png" alt="Evaluation Summary">
+  <img src="ingestion/chunks_generation/analysis/results/chunk_tokens_hist.png" alt="Chunk Token Distribution">
 </p>
 
 <p align="center">
-  <img src="ingestion/chunks_generation/analysis/results/chunk_overlap_hist.png" alt="Evaluation Summary">
+  <img src="ingestion/chunks_generation/analysis/results/chunk_overlap_hist.png" alt="Chunk Overlap Distribution">
 </p>
 
 The distributions show that generated chunks adhere to the configured token constraints, while overlap generally remains within the defined limit. Occasional deviations occur when the last sentence of the previous chunk exceeds the available overlap allowance; in such cases, the complete sentence is preserved in the next chunk to maintain continuity, slightly exceeding the configured overlap limit.
@@ -224,15 +224,15 @@ The evaluation results are visualized across question categories and retrieval c
 </p>
 
 <p align="center">
-  <img src="evaluation/visualization/outputs/question_type_plot.png" alt="Evaluation Summary">
+  <img src="evaluation/visualization/outputs/question_type_plot.png" alt="Question Type Plot">
 </p>
 
 <p align="center">
-  <img src="evaluation/visualization/outputs/multi_chunk_plot.png" alt="Evaluation Summary">
+  <img src="evaluation/visualization/outputs/multi_chunk_plot.png" alt="Multi-Chunk Plot">
 </p>
 
 <p align="center">
-  <img src="evaluation/visualization/outputs/heatmap_plot.png" alt="Description" width="550">
+  <img src="evaluation/visualization/outputs/heatmap_plot.png" alt="Heatmap Plot" width="550">
 </p>
 
 
