@@ -232,7 +232,7 @@ The evaluation results are visualized across question categories and retrieval c
 </p>
 
 <p align="center">
-  <img src="evaluation/visualization/outputs/heatmap_plot.png" alt="Heatmap Plot" width="650">
+  <img src="evaluation/visualization/outputs/heatmap_plot.png" alt="Heatmap Plot" width="600">
 </p>
 
 
