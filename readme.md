@@ -1,8 +1,8 @@
 # Retrieval-Augmented Generation (RAG) System
 
-A document question-answering system built on the **Systems Limited 2025 Annual Financial Report** using a RAG pipeline that combines hybrid retrieval (dense vector search and BM25), reranking, and large language models to generate grounded responses.
+A document question-answering system built on the publicly accessible **[Systems Limited 2025 Annual Financial Report](https://www.systemsltd.com/sites/default/files/2026-04/Systems%20Limited-Annual%20Report%202025.pdf)** using a RAG pipeline that combines hybrid retrieval (dense vector search and BM25), reranking, and large language models to generate grounded responses.
 
-The pipeline includes document ingestion, PDF processing, chunking, embedding generation, retrieval, context selection, answer generation, and evaluation.
+The pipeline includes document  PDF processing, ingestion, chunking, embedding generation, retrieval, context selection, answer generation, and evaluation.
 
 ## System Architecture
 
