@@ -26,12 +26,14 @@ Depending on the selected response mode, the pipeline applies different levels o
 
 The ingestion workflow transforms source documents into indexed representations for retrieval. The complete process is illustrated below:
 
-![Document Ingestion Flow](.github/assets/Ingestion.png)
+<p align="center">
+  <img src=".github/assets/Ingestion.png" alt="Description" width="400">
+</p>
 
-The pipeline is organized into independent stages that can be executed and resumed separately:
+The pipeline is organized into modular stages that can be executed separately and resumed from their intermediate outputs:
 
 * **PDF Ingestion:** Extracts content from PDF documents and converts them into structured plain text JSONL data.
-* **Chunking:** Splits documents into retrieval-friendly chunks while preserving relevant metadata for traceability and retrieval context.
+* **Chunking:** Transforms extracted text into retrieval-friendly chunks while preserving relevant metadata for traceability and retrieval enhancements.
 * **Embedding Generation:** Converts document chunks into vector representations.
 * **Uploading & Indexing:** Uploads chunks, metadata, and embeddings to OpenSearch to support hybrid retrieval using dense vector search and BM25.
 
@@ -49,14 +51,20 @@ The chunking pipeline is designed to preserve document semantics rather than rel
 
 Key characteristics:
 - Maximum chunk size is constrained to 350 tokens.
-- Document hierarchy (section and subsection context) is preserved within each chunk.
 - Higher-level sections are kept separate to avoid mixing unrelated contexts.
-- Sentence-based overlap is applied to maintain continuity between chunks.
+- Sentence-based overlap is applied to maintain continuity between chunks, with the overlap limit configured as 15% of the maximum chunk size.
 - Section boundaries are respected to prevent unrelated content from being introduced through overlap.
+- Document hierarchy (section and subsection context) is preserved within each chunk. Example:
+
+> H1: Sustainability Governance
+> H2: Governance Structure and Reporting Lines
+> H3: Sustainability Oversight Framework
+>
+> Energy management is managed by the electrical function...
 
 ### Chunk Metadata
 
-Each chunk is stored together with metadata required for traceability and retrieval context, including information such as document section, page range, token count, and overlap details.
+Each chunk is stored together with metadata required for traceability and retrieval enhancements, including information such as document section, page range, token count, and overlap details.
 
 Example:
 
@@ -134,11 +142,11 @@ This additional stage improves precision by prioritizing the most relevant retri
 
 ## Generation Pipeline
 
-The generation pipeline constructs the final response by combining retrieved document context, conversation history, and task-specific prompting before invoking the LLM.
+The generation pipeline constructs the input context for the LLM by combining retrieved document context, conversation history, and task-specific prompting to generate grounded responses.
 
 ### Context Construction
 
-The generator uses the top 5 retrieved documents after retrieval and reranking. Retrieved chunks are ordered by relevance score and combined into the final context provided to the LLM.
+The generator uses the top 5 retrieved documents, ranked by relevance, as the final context provided to the LLM for generating the response.
 
 Each chunk is limited to a maximum of 350 tokens, ensuring that the assembled context remains bounded while providing sufficient information for answer generation.
 
@@ -213,7 +221,7 @@ The evaluation results are visualized across question categories and retrieval c
 
 ![Evaluation Heatmap](evaluation/visualization/outputs/heatmap_plot.png)
 
-Overall results:
+#### Overall results:
 
 **Retrieval Quality**
 
@@ -222,7 +230,7 @@ Overall results:
 | MRR | 88.6 |
 | Recall@5 | 77.1 |
 
-**Generation Quality**
+**Generation Performance**
 
 | Metric | Score (%) |
 |---|---:|
@@ -268,8 +276,8 @@ The results show strong retrieval ranking performance and high faithfulness of g
 * Python 3.12
 * Docker (required for running OpenSearch locally)
 * OpenAI API key
-* Google Gemini API key (Optional; only needed for PDF ingestion)
-* PostgreSQL database (Optional; used for usage tracking)
+* Google Gemini API key (optional; only needed for PDF ingestion)
+* PostgreSQL database (optional; used for usage tracking)
 
 ### Environment Configuration
 
