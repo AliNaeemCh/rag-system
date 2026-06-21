@@ -87,9 +87,13 @@ The chunking pipeline was analyzed to verify the resulting chunk size distributi
 
 The following visualizations show the token distribution of generated chunks and the applied overlap between consecutive chunks:
 
-![Chunk Token Distribution](ingestion/chunks_generation/analysis/results/chunk_tokens_hist.png)
+<p align="center">
+  <img src="ingestion/chunks_generation/analysis/results/chunk_tokens_hist.png" alt="Evaluation Summary">
+</p>
 
-![Chunk Overlap Distribution](ingestion/chunks_generation/analysis/results/chunk_overlap_hist.png)
+<p align="center">
+  <img src="ingestion/chunks_generation/analysis/results/chunk_overlap_hist.png" alt="Evaluation Summary">
+</p>
 
 The distributions show that generated chunks adhere to the configured token constraints, while overlap generally remains within the defined limit. Occasional deviations occur when the last sentence of the previous chunk exceeds the available overlap allowance; in such cases, the complete sentence is preserved in the next chunk to maintain continuity, slightly exceeding the configured overlap limit.
 
