@@ -27,7 +27,7 @@ Depending on the selected response mode, the pipeline applies different levels o
 The ingestion workflow transforms source documents into indexed representations for retrieval. The complete process is illustrated below:
 
 <p align="center">
-  <img src=".github/assets/Ingestion.png" alt="Description" width="600">
+  <img src=".github/assets/Ingestion.png" alt="Description" width="550">
 </p>
 
 The pipeline is organized into modular stages that can be executed separately and resumed from their intermediate outputs:
@@ -61,7 +61,6 @@ Key characteristics:
 > H2: Governance Structure and Reporting Lines
 >
 > H3: Sustainability Oversight Framework
->
 >
 > Energy management is managed by the electrical function...
 
@@ -222,7 +221,10 @@ The evaluation results are visualized across question categories and retrieval c
 
 ![Multi-Chunk Analysis](evaluation/visualization/outputs/multi_chunk_plot.png)
 
-![Evaluation Heatmap](evaluation/visualization/outputs/heatmap_plot.png)
+<p align="center">
+  <img src="evaluation/visualization/outputs/heatmap_plot.png" alt="Description" width="550">
+</p>
+
 
 #### Overall results:
 
