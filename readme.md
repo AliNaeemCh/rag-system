@@ -27,7 +27,7 @@ Depending on the selected response mode, the pipeline applies different levels o
 The ingestion workflow transforms source documents into indexed representations for retrieval. The complete process is illustrated below:
 
 <p align="center">
-  <img src=".github/assets/Ingestion.png" alt="Description" width="400">
+  <img src=".github/assets/Ingestion.png" alt="Description" width="800">
 </p>
 
 The pipeline is organized into modular stages that can be executed separately and resumed from their intermediate outputs:
@@ -57,8 +57,11 @@ Key characteristics:
 - Document hierarchy (section and subsection context) is preserved within each chunk. Example:
 
 > H1: Sustainability Governance
+>
 > H2: Governance Structure and Reporting Lines
+>
 > H3: Sustainability Oversight Framework
+>
 >
 > Energy management is managed by the electrical function...
 
