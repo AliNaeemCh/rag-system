@@ -238,14 +238,14 @@ The evaluation results are visualized across question categories and retrieval c
 
 #### Overall results:
 
-**Retrieval Quality**
+Retrieval Quality
 
 | Metric | Score (%) |
 |---|---:|
 | MRR | 88.6 |
 | Recall@5 | 77.1 |
 
-**Generation Performance**
+Generation Performance
 
 | Metric | Score (%) |
 |---|---:|
@@ -256,33 +256,26 @@ The results show strong retrieval ranking performance and high faithfulness of g
 
 ## Technology Stack
 
-### Application Layer
-- **Python 3.12**
-- **FastAPI** for backend API services
-- **Streamlit** for the interactive user interface
+### Programming Language
+- Python 3.12
+
+### Backend
+- FastAPI
+
+### Frontend
+- Streamlit
 
 ### LLM & NLP
-- **OpenAI API** for response generation, query rewriting, and LLM-based evaluation
-- **Google Gemini** for LLM-based PDF document processing
-- **Sentence Transformers** for dense embedding generation
-- **Cross-Encoder models** for retrieval reranking
+- OpenAI API
+- Sentence Transformers
+- Cross-Encoder Models
 
 ### Retrieval & Storage
-- **OpenSearch** for hybrid retrieval and document indexing
-  - k-NN vector search with HNSW indexing
-  - BM25 sparse retrieval
-- **PostgreSQL** for usage tracking and analytics
+- OpenSearch
+- PostgreSQL
 
-### Data Processing & Evaluation
-- JSONL-based document processing pipeline
-- Automated evaluation dataset generation
-- Retrieval and generation evaluation framework
-- Evaluation result visualization
-
-### Infrastructure & Engineering
-- Docker-based local development environment
-- Environment-driven configuration management
-- Structured logging and retry handling
+### Infrastructure
+- Docker
 
 ## Setup and Usage
 
