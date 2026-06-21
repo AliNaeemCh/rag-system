@@ -215,11 +215,17 @@ The evaluation uses the generated answer, question, reference answer, and retrie
 
 The evaluation results are visualized across question categories and retrieval complexity levels.
 
-![Evaluation Summary](evaluation/visualization/outputs/summary.png)
+<p align="center">
+  <img src="evaluation/visualization/outputs/summary.png" alt="Evaluation Summary">
+</p>
 
-![Question Type Analysis](evaluation/visualization/outputs/question_type_plot.png)
+<p align="center">
+  <img src="evaluation/visualization/outputs/question_type_plot.png" alt="Evaluation Summary">
+</p>
 
-![Multi-Chunk Analysis](evaluation/visualization/outputs/multi_chunk_plot.png)
+<p align="center">
+  <img src="evaluation/visualization/outputs/multi_chunk_plot.png" alt="Evaluation Summary">
+</p>
 
 <p align="center">
   <img src="evaluation/visualization/outputs/heatmap_plot.png" alt="Description" width="550">
