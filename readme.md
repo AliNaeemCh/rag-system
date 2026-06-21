@@ -228,11 +228,11 @@ The evaluation results are visualized across question categories and retrieval c
 </p>
 
 <p align="center">
-  <img src="evaluation/visualization/outputs/multi_chunk_plot.png" alt="Multi-Chunk Plot" width="800">
+  <img src="evaluation/visualization/outputs/multi_chunk_plot.png" alt="Multi-Chunk Plot" width="700">
 </p>
 
 <p align="center">
-  <img src="evaluation/visualization/outputs/heatmap_plot.png" alt="Heatmap Plot" width="800">
+  <img src="evaluation/visualization/outputs/heatmap_plot.png" alt="Heatmap Plot" width="700">
 </p>
 
 
