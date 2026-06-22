@@ -6,13 +6,13 @@ from app.core.config import settings
 from app.infra.retrieval.opensearch.store import OpenSearchStore
 from app.infra.retrieval.base import BaseDocumentStore
 from ingestion.document_uploading.config import DocumentUploadingPipelineConfig
+from app.infra.dependencies import create_opensearch_client
 
 import logging
 logger = logging.getLogger("ingestion.document_uploading.run")
 logger.info("Loading file...")
 
 from tqdm import tqdm
-from opensearchpy import OpenSearch
 from pathlib import Path
 
 def run_pipeline(
@@ -102,14 +102,13 @@ def run_pipeline(
 
 config = DocumentUploadingPipelineConfig(resume=False)
 
-client = OpenSearch(hosts=[settings.OPENSEARCH_HOST],
-                    http_auth=(settings.OPENSEARCH_USERNAME,settings.OPENSEARCH_PASSWORD),
-                    use_ssl=True,
-                    verify_certs=False,
-                    ssl_show_warn=False)
+opensearch_client = create_opensearch_client(host=settings.OPENSEARCH_HOST,
+                                            username=settings.OPENSEARCH_USERNAME,
+                                            password=settings.OPENSEARCH_PASSWORD,
+                                            pool_maxsize=settings.OPENSEARCH_POOL_MAXSIZE)
 
 opensearch_store: BaseDocumentStore = OpenSearchStore(
-    client=client,
+    client=opensearch_client,
     index_name=settings.OPENSEARCH_INDEX_NAME,
     embedding_dim=settings.EMBEDDING_DIMENSIONS,
     m=settings.HNSW_M,

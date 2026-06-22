@@ -14,10 +14,6 @@ class LogLevel(str, Enum):
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
 
-class OverlapGranularity(str, Enum):
-    SENTENCE_BASED = "sentence_based"
-    WORD_BASED = "word_based"
-
 BASE_DIR = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
@@ -52,7 +48,7 @@ class Settings(BaseSettings):
     HF_BASE_URL: str = "https://router.huggingface.co/v1"
 
     # Embeddings
-    EMBEDDING_MODEL: str = "all-mpnet-base-v2"  # all-mpnet-base-v2: Max. seq. length: 384
+    EMBEDDING_MODEL: str = "all-mpnet-base-v2"  # all-mpnet-base-v2: Dims: 768 | Max. seq. length: 384
     @property
     def EMBEDDING_MODEL_PATH(self) -> str:
         return BASE_DIR / "models" / "embedding" / self.EMBEDDING_MODEL
@@ -112,7 +108,7 @@ class Settings(BaseSettings):
     DENSE_TOP_K: int = Field(default=50, ge=1, le=100)
     SPARSE_TOP_K: int = Field(default=30, ge=1, le=50)
     FUSED_TOP_K: int = Field(default=20, ge=1, le=40)
-    FINAL_TOP_K: int = Field(default=5, ge=1, le=50)
+    FINAL_TOP_K: int = Field(default=5, ge=1, le=10)
 
     # Chat
     CHAT_HISTORY_MAX_PAIRS: int = Field(default=5, ge=1)
@@ -126,15 +122,6 @@ class Settings(BaseSettings):
     EVAL_DATASET_DIR: Path = BASE_DIR / "evaluation" / "dataset"
     EVAL_RESULTS_DIR: Path = BASE_DIR / "evaluation" / "results"
     EVAL_VISUALIZATION_DIR: Path = BASE_DIR / "evaluation" / "visualization" / "outputs"
-
-    # Ingestion
-    CHUNK_SIZE: int = Field(default=350, gt=0)
-    OVERLAP_TOKENS_PCT: int = Field(default=15, ge=0, lt=100)
-    OVERLAP_GRANULARITY: OverlapGranularity = OverlapGranularity.SENTENCE_BASED
-    SEPARATE_H2s: bool = True
-    CROSS_SECTION_OVERLAP: bool = False
-    CHUNKS_EMBEDDING_BATCH_SIZE: int = Field(default=2, gt=0)
-    CHUNKS_SEARCH_INDEX_BATCH_SIZE: int = Field(default=64, gt=0)
 
     # Prompts
     ENTITY_NAME: str = "Systems Limited"

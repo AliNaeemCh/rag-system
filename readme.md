@@ -2,8 +2,6 @@
 
 A document question-answering system built on the publicly accessible **[Systems Limited 2025 Annual Financial Report](https://www.systemsltd.com/sites/default/files/2026-04/Systems%20Limited-Annual%20Report%202025.pdf)** using a RAG pipeline that combines hybrid retrieval (dense vector search and BM25), reranking, and large language models to generate grounded responses.
 
-The pipeline includes document  PDF processing, ingestion, chunking, embedding generation, retrieval, context selection, answer generation, and evaluation.
-
 ## System Architecture
 
 The system consists of two primary workflows: the inference pipeline for answering user queries and the document ingestion pipeline for preparing documents for retrieval.
@@ -53,7 +51,7 @@ Key characteristics:
 - Maximum chunk size is constrained to 350 tokens.
 - Higher-level sections are kept separate to avoid mixing unrelated contexts.
 - Sentence-based overlap is applied to maintain continuity between chunks, with the overlap limit configured as 15% of the maximum chunk size.
-- Section boundaries are respected to prevent unrelated content from being introduced through overlap.
+- Cross-section overlap is avoided to prevent unrelated sections from being combined across chunks.
 - Document hierarchy (section and subsection context) is preserved within each chunk. Example:
 
 > H1: Sustainability Governance
@@ -66,7 +64,7 @@ Key characteristics:
 
 ### Chunk Metadata
 
-Each chunk is stored together with metadata required for traceability and retrieval enhancements, including information such as document section, page range, token count, and overlap details.
+Each chunk is stored together with metadata required for traceability and retrieval enhancements, including information such as chapter, page range, token count, and overlap details.
 
 Example:
 
@@ -99,7 +97,7 @@ The distributions show that generated chunks adhere to the configured token cons
 
 ### Embedding Generation
 
-Processed chunks are converted into dense vector representations using the configured embedding model and stored alongside the original chunk data for downstream retrieval.
+Processed chunks are converted into dense vector representations using the `all-mpnet-base-v2` embedding model and stored alongside the original chunk data for downstream retrieval.
 
 ### Pipeline Design
 
@@ -162,7 +160,6 @@ The pipeline uses structured prompts that combine:
 - System-level instructions and response guidelines.
 - Retrieved document context.
 - User query.
-- Conversation history.
 
 Prompt templates are managed separately to keep generation logic independent from prompt design.
 
@@ -236,7 +233,7 @@ The evaluation results are visualized across question categories and retrieval c
 </p>
 
 
-#### Overall results:
+#### Overall Results
 
 Retrieval Quality
 

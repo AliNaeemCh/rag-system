@@ -148,7 +148,7 @@ class PDFIngestor:
                     previous_section_transcription = ""
                 previous_section_transcription = previous_section_transcription if previous_section_transcription != "" else "NA"
                 record['transcription'] = trancribed_page
-                record['llm_model'] = llm_engine.model
+                record['llm_model'] = llm_engine.model_name
                 record['total_tokens'] = response.usage.total_tokens
                 write_jsonl(record, output_path=pdf_config.jsonl_path)
             except Exception:

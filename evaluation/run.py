@@ -19,7 +19,8 @@ from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMP
 from evaluation.dataset.generation.config import EvalQuestionType
 from evaluation.dataset.generation.config import EvalDatasetGeneratorConfig
 from evaluation.utils import update_eval_results, aggregate_eval_results, get_eval_results_obj
-                                                
+from ingestion.chunks_generation.config import ChunkingConfig
+
 import logging
 logger = logging.getLogger("evaluation.run")
 logger.info("Loading file...")
@@ -139,10 +140,10 @@ def run_pipeline(config: EvalConfig,
                         "ef_search": settings.HNSW_EF_SEARCH
                     },
                     "chunking": {
-                        "chunk_size": settings.CHUNK_SIZE,
-                        "chunk_overlap_pct": settings.OVERLAP_TOKENS_PCT,
-                        "cross_section_overlap": settings.CROSS_SECTION_OVERLAP,
-                        "overlap_granularity": settings.OVERLAP_GRANULARITY.value
+                        "chunk_size": ChunkingConfig.chunk_size,
+                        "chunk_overlap_pct": ChunkingConfig.chunk_overlap_pct,
+                        "cross_section_overlap": ChunkingConfig.cross_section_overlap,
+                        "overlap_granularity": ChunkingConfig.overlap_granularity.value
                     },
                     "top_ks": {
                         "dense_retrieval": settings.DENSE_TOP_K,

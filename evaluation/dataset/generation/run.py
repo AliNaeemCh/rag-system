@@ -9,6 +9,7 @@ from app.prompts.eval_dataset_generator import FACTUAL_QS_GENERATOR_SYSTEM_PROMP
 from app.infra.usage_tracking.tracker import usage_tracker
 from app.infra.dependencies import create_openai_client
 from app.infra.llm_engines.openai.engine import OpenAIEngine
+from ingestion.chunks_generation.config import ChunkingConfig
 
 import logging
 logger = logging.getLogger("evaluation.dataset.generation.run")
@@ -161,7 +162,7 @@ dataset_path = settings.EVAL_DATASET_DIR / "eval_dataset.jsonl"
 config = EvalDatasetGeneratorConfig(resume=True)
 openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY)
 eval_dataset_generator_llm = OpenAIEngine(model_name=settings.EVAL_DATASET_GENERATOR_LLM, client = openai_client, usage_tracker=usage_tracker)
-eval_dataset_generator = EvalDatasetGenerator(chunks_index=chunks_index, chunks_path=chunks_path, llm=eval_dataset_generator_llm, min_chunk_tokens=settings.CHUNK_SIZE // 2, seed=config.seed)
+eval_dataset_generator = EvalDatasetGenerator(chunks_index=chunks_index, chunks_path=chunks_path, llm=eval_dataset_generator_llm, min_chunk_tokens=ChunkingConfig.chunk_size // 2, seed=config.seed)
 
 run_pipeline(
     eval_dataset_generator=eval_dataset_generator,

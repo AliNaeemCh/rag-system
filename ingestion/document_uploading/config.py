@@ -8,5 +8,5 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class DocumentUploadingPipelineConfig:
-    batch_size: int = settings.CHUNKS_SEARCH_INDEX_BATCH_SIZE
+    batch_size: int = 64
     resume: bool = False

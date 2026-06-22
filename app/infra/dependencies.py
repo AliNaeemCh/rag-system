@@ -12,9 +12,9 @@ def create_hf_inference_client(hf_token: str):
     from huggingface_hub import InferenceClient
     return InferenceClient(provider="hf-inference", api_key=hf_token)
 
-def create_opensearch_client(host: str, username: str, password: str, use_ssl: bool = True, verify_certs: bool = False, pool_maxsize: int = 1):
+def create_opensearch_client(host: str, username: str, password: str, use_ssl: bool = True, verify_certs: bool = False, ssl_show_warn: bool = False, pool_maxsize: int = 1):
     from opensearchpy import OpenSearch
-    return OpenSearch(hosts=[host], http_auth=(username, password), use_ssl=use_ssl, verify_certs=verify_certs, pool_maxsize=pool_maxsize)
+    return OpenSearch(hosts=[host], http_auth=(username, password), use_ssl=use_ssl, verify_certs=verify_certs, pool_maxsize=pool_maxsize, ssl_show_warn=False)
 
 # ML models
 def get_reranker_model(model_path: Path):

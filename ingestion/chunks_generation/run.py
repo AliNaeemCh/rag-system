@@ -98,17 +98,17 @@ chunking_config = ChunkingConfig(resume=False)  # Default params
 
 chunks_file_name = "sys_annual_2025_chunks.jsonl"
 
-# run_pipeline(
-#     chunking_config=chunking_config,
-#     input_path=settings.PROCESSED_DATA_DIR / "SYS Limited Annual - 2025.jsonl",
-#     output_path=settings.PROCESSED_DATA_DIR / chunks_file_name
-# )
+run_pipeline(
+    chunking_config=chunking_config,
+    input_path=settings.PROCESSED_DATA_DIR / "SYS Limited Annual - 2025.jsonl",
+    output_path=settings.PROCESSED_DATA_DIR / chunks_file_name
+)
 
 # Chunks jsonl file index generation
 
 chunks_jsonl_file_index_path = settings.PROCESSED_DATA_DIR / "chunks_jsonl_index.pkl"
 build_jsonl_index(jsonl_path=settings.PROCESSED_DATA_DIR / chunks_file_name, index_path=chunks_jsonl_file_index_path)
-print(f"\nChunks jsonl file index saved to: {chunks_jsonl_file_index_path}")
+logger.info(f"Chunks jsonl file index saved to: {chunks_jsonl_file_index_path}")
 
 # Chunks stats generation
 

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class EmbeddingPipelineConfig:
-    batch_size: int = settings.CHUNKS_EMBEDDING_BATCH_SIZE
+    batch_size: int = 2
     embedding_dim: int = settings.EMBEDDING_DIMENSIONS
     m: int = settings.HNSW_M
     ef_construction: int = settings.HNSW_EF_CONSTRUCTION
