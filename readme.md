@@ -284,7 +284,11 @@ The results show strong retrieval ranking performance and high faithfulness of g
 * Google Gemini API key (optional; only needed for PDF ingestion)
 * PostgreSQL database (optional; used for usage tracking)
 
-### Environment Configuration
+### Initial Setup
+
+The following steps only need to be completed once when setting up the project.
+
+#### 1. Environment Configuration
 
 Create a `.env` file from the provided template:
 
@@ -294,13 +298,13 @@ cp .env.example .env
 
 Populate the required API keys, and OpenSearch configuration values before running the application.
 
-### Install Dependencies
+#### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Download Local Models
+#### 3. Download Local Models
 
 Download the required local embedding and reranking models:
 
@@ -310,7 +314,7 @@ python scripts/download_models.py
 
 The models will be stored under the `models/` directory.
 
-### Start OpenSearch
+#### 4. Start OpenSearch
 
 Start the OpenSearch container:
 
@@ -318,7 +322,7 @@ Start the OpenSearch container:
 docker compose up -d
 ```
 
-### Index Documents
+#### 5. Index Documents
 
 The repository already contains processed document artifacts. To upload and index the chunks and embeddings into OpenSearch:
 
@@ -326,13 +330,25 @@ The repository already contains processed document artifacts. To upload and inde
 python -m ingestion.document_uploading.run
 ```
 
-### Run Application
+### Usage
+
+The following commands should be run whenever the application is started.
+
+#### 1. Start OpenSearch
+
+Start the OpenSearch container:
+
+```bash
+docker compose up -d
+```
+
+#### 2. Run Application
 
 Start the backend API:
 
 ```bash
 python run.py
-````
+```
 
 Start the Streamlit frontend:
 
