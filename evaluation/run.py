@@ -324,7 +324,7 @@ run_pipeline(
     retrieval_eval=retrieval_eval,
     generation_eval=generation_eval,
     dataset_path=settings.EVAL_DATASET_DIR / "eval_dataset.jsonl",
-    config_path=settings.EVAL_DATASET_DIR / "config.json",
+    config_path=settings.EVAL_RESULTS_DIR / "config.json",
     raw_result_path=settings.EVAL_RESULTS_DIR / "raw_results.jsonl",
     final_result_path=settings.EVAL_RESULTS_DIR / "final_result.json"
 )
