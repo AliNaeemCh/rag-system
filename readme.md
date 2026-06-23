@@ -178,7 +178,7 @@ The generator supports multi-turn conversations by incorporating the most recent
 The system includes a dedicated evaluation pipeline to measure retrieval quality and answer generation performance across different question complexities. The overall evaluation workflow is illustrated below:
 
 <p align="center">
-  <img src=".github/assets/Evaluation.png" alt="Evaluation Pipeline" width="700">
+  <img src=".github/assets/Evaluation.png" alt="Evaluation Pipeline" width="680">
 </p>
 
 ### Evaluation Dataset
