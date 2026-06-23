@@ -175,7 +175,11 @@ The generator supports multi-turn conversations by incorporating the most recent
 
 ## Evaluation Framework
 
-The system includes a dedicated evaluation pipeline to measure retrieval quality and answer generation performance across different question complexities.
+The system includes a dedicated evaluation pipeline to measure retrieval quality and answer generation performance across different question complexities. The overall evaluation workflow is illustrated below:
+
+<p align="center">
+  <img src=".github/assets/Evaluation.png" alt="Evaluation Pipeline" width="600">
+</p>
 
 ### Evaluation Dataset
 
