@@ -64,6 +64,50 @@ def create_multi_chunk_df(results: dict):
     multi_chunk = retrieval["question_type_to_result"]["multi_chunk"]["num_chunks_to_result"]
     generation_multi = generation["question_type_to_result"]["multi_chunk"]["num_chunks_to_result"]
 
+    # -------------------------
+    # Single Chunk (factual + inference average)
+    # -------------------------
+
+    factual = retrieval["question_type_to_result"]["factual"]
+    inference = retrieval["question_type_to_result"]["inference"]
+
+    factual_gen = generation["question_type_to_result"]["factual"]
+    inference_gen = generation["question_type_to_result"]["inference"]
+
+    single_chunk = {
+        "Chunks": 1,
+
+        "MRR": percentage(
+            (
+                factual["mrr"]["sum"] +
+                inference["mrr"]["sum"]
+            ) / (factual["mrr"]["values"] + inference["mrr"]["values"])
+        ),
+
+        f"Recall@{settings.FINAL_TOP_K}": percentage(
+            (
+                factual["recall_k"]["sum"] +
+                inference["recall_k"]["sum"]
+            ) / (factual["recall_k"]["values"] + inference["recall_k"]["values"])
+        ),
+
+        "Ref. Coverage": percentage(
+            (
+                factual_gen["reference_coverage"]["sum"] +
+                inference_gen["reference_coverage"]["sum"]
+            ) /  (factual_gen["reference_coverage"]["values"] + inference_gen["reference_coverage"]["values"])
+        ),
+
+        "Faithfulness": percentage(
+            (
+                factual_gen["faithfulness"]["sum"] +
+                inference_gen["faithfulness"]["sum"]
+            ) / (factual_gen["faithfulness"]["values"] + inference_gen["faithfulness"]["values"])
+        )
+    }
+
+    rows.append(single_chunk)
+
     for chunks in range(2, settings.FINAL_TOP_K+1):
         chunks_str = str(chunks)
         rows.append({
