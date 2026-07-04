@@ -21,8 +21,9 @@ class Retriever:
                  ) -> dict[str, RetrievedDocument]:
         """
         1. Embed query
-        2. Search vector DB
-        3. Return top-k docs
+        2. Vector
+        3. Keyword search
+        4. Return top-k docs
         """
         ef_search = ef_search or settings.HNSW_EF_SEARCH
 
