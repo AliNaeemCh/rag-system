@@ -15,3 +15,13 @@ def get_usage_tracker_db_pool() -> SimpleConnectionPool:
     )
 
     return usage_tracker_db_pool
+
+def get_rag_db_pool() -> SimpleConnectionPool:
+
+    rag_db_pool = SimpleConnectionPool(
+        minconn=1,
+        maxconn=settings.USAGE_TRACKER_DB_POOL_MAX_CONNS,
+        dsn=settings.USAGE_TRACKER_DB_URL
+    )
+
+    return usage_tracker_db_pool
