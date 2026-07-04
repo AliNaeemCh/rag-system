@@ -3,10 +3,10 @@ setup_logging()
 
 from app.core.utils import load_jsonl
 from app.core.config import settings
-from app.infra.retrieval.opensearch.store import OpenSearchStore
+from app.infra.retrieval.postgres.store import PgStore
 from app.infra.retrieval.base import BaseDocumentStore
 from ingestion.document_uploading.config import DocumentUploadingPipelineConfig
-from app.infra.dependencies import create_opensearch_client
+from app.infra.db.pool import get_rag_db_pool
 
 import logging
 logger = logging.getLogger("ingestion.document_uploading.run")
@@ -102,21 +102,18 @@ def run_pipeline(
 
 config = DocumentUploadingPipelineConfig(resume=False)
 
-opensearch_client = create_opensearch_client(host=settings.OPENSEARCH_HOST,
-                                            username=settings.OPENSEARCH_USERNAME,
-                                            password=settings.OPENSEARCH_PASSWORD,
-                                            pool_maxsize=settings.OPENSEARCH_POOL_MAXSIZE)
+rag_db_pool = get_rag_db_pool()
 
-opensearch_store: BaseDocumentStore = OpenSearchStore(
-    client=opensearch_client,
-    index_name=settings.OPENSEARCH_INDEX_NAME,
+
+pg_store: BaseDocumentStore = PgStore(
+    db_pool=rag_db_pool,
     embedding_dim=settings.EMBEDDING_DIMENSIONS,
     m=settings.HNSW_M,
     ef_construction=settings.HNSW_EF_CONSTRUCTION
 )
 
 run_pipeline(
-    document_store=opensearch_store,
+    document_store=pg_store,
     config=config,
     chunks_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
     embeddings_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_embeddings.jsonl",

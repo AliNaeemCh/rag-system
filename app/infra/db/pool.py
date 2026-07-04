@@ -20,8 +20,8 @@ def get_rag_db_pool() -> SimpleConnectionPool:
 
     rag_db_pool = SimpleConnectionPool(
         minconn=1,
-        maxconn=settings.USAGE_TRACKER_DB_POOL_MAX_CONNS,
-        dsn=settings.USAGE_TRACKER_DB_URL
+        maxconn=settings.RAG_DB_POOL_MAX_CONNS,
+        dsn=settings.RAG_DB_URL
     )
 
-    return usage_tracker_db_pool
+    return rag_db_pool

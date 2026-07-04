@@ -1,38 +1,40 @@
-from app.infra.retrieval.base import BaseDocumentStore
+from app.infra.retrieval.base import BaseDocumentStore, BaseRetrievalStore
 from app.models import RetrievedDocument, RetrievalType, ScoreBreakdown
 from app.infra.db.session import get_connection
 from app.infra.db.retry import db_retry
 from app.core.config import settings
+from app.infra.dependencies import get_nlp
 
 import logging
 logger = logging.getLogger("app.infra.vector_stores.pg_vector_store.store")
 logger.info("Loading file...")
 
+nlp = get_nlp()
 from psycopg2.extras import execute_values, Json
 from psycopg2.pool import SimpleConnectionPool
 
-class PgStore(BaseDocumentStore):
+class PgStore(BaseRetrievalStore, BaseDocumentStore):
     """
-    PostgreSQL + pgvector (cosine similarity + HNSW index) + pg_search (BM25 search)
+    PostgreSQL + pgvector (cosine similarity + HNSW index) +  Keyword search
     - embeddings stored in Postgres
     - cosine similarity as default metric
     - HNSW index for ANN retrieval
     """
 
-    def __init__(self, db_pool: SimpleConnectionPool, embedding_dim: int, m: int, ef_construction: int):
+    def __init__(self, db_pool: SimpleConnectionPool, embedding_dim: int, m: int, ef_construction: int, kw_config: str = 'english'):
         self.embedding_dim = embedding_dim
         self.m = m
         self.ef_construction = ef_construction
         self.db_pool = db_pool
+        self.kw_config = kw_config
         self._ensure_schema()
 
-    @db_retry(retries=settings.DB_POOL_MAX_CONNS)
+    @db_retry(retries=settings.RAG_DB_POOL_MAX_CONNS)
     def _ensure_schema(self):
         with get_connection(self.db_pool) as conn:
             with conn.cursor() as cur:
                 # Enable pgvector + pg_search extensions
                 cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-                cur.execute("CREATE EXTENSION IF NOT EXISTS pg_search;")
 
                 # -------------------------
                 # Documents table
@@ -42,6 +44,9 @@ class PgStore(BaseDocumentStore):
                         id BIGSERIAL PRIMARY KEY,
                         content TEXT NOT NULL,
                         embedding VECTOR({self.embedding_dim}),
+                        content_tsv tsvector GENERATED ALWAYS AS (
+                            to_tsvector('{self.kw_config}', content)
+                        ) STORED,
                         metadata JSONB,
                         created_at TIMESTAMPTZ DEFAULT NOW()
                     );
@@ -61,15 +66,15 @@ class PgStore(BaseDocumentStore):
                 """)
 
                 # -------------------------
-                # BM25 index (ParadeDB)
+                # Keyword search index
                 # -------------------------
                 cur.execute("""
-                    CREATE INDEX IF NOT EXISTS documents_bm25_idx
+                    CREATE INDEX IF NOT EXISTS documents_content_gin
                     ON documents
-                    USING bm25 (id, content);
+                    USING GIN (content_tsv);
                 """)
     
-    @db_retry(retries=settings.DB_POOL_MAX_CONNS)
+    @db_retry(retries=settings.RAG_DB_POOL_MAX_CONNS)
     def reset_store(self):
         with get_connection(self.db_pool) as conn:
             with conn.cursor() as cur:
@@ -77,7 +82,7 @@ class PgStore(BaseDocumentStore):
                 cur.execute("DROP TABLE IF EXISTS documents;")
 
         # 2. Recreate using existing logic
-        self._ensure_schema()
+        self._ensure_schema(self.kw_config)
 
     def add_document(
         self,
@@ -101,7 +106,7 @@ class PgStore(BaseDocumentStore):
                         (chunk_id, content, embedding, Json(metadata)),
                     )
 
-        db_retry(settings.DB_POOL_MAX_CONNS)(_db_op)()
+        db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
 
     def add_documents_bulk(self, chunks: list[dict]) -> None:
 
@@ -130,7 +135,7 @@ class PgStore(BaseDocumentStore):
                         rows,
                     )
 
-        db_retry(settings.DB_POOL_MAX_CONNS)(_db_op)()
+        db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
 
     def similarity_search(
         self,
@@ -173,7 +178,7 @@ class PgStore(BaseDocumentStore):
                     cur.execute(sql, params)
                     return cur.fetchall()
 
-        rows = db_retry(settings.DB_POOL_MAX_CONNS)(_db_op)()
+        rows = db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
         
         logger.info("Similarity search completed")
 
@@ -188,7 +193,7 @@ class PgStore(BaseDocumentStore):
             for r in rows
         ]
     
-    @db_retry(retries=settings.DB_POOL_MAX_CONNS)
+    @db_retry(retries=settings.RAG_DB_POOL_MAX_CONNS)
     def delete(self, ids: int | list[int]) -> None:
         if isinstance(ids, int):
             ids = [ids]
@@ -207,21 +212,39 @@ class PgStore(BaseDocumentStore):
         filters: dict | None = None,
     ) -> list[RetrievedDocument]:
 
-        logger.info("BM25 search started")
+        def build_tsquery(query: str) -> str:
+            doc = nlp(query)
+
+            tokens = [
+                token.text
+                for token in doc
+            ]
+
+            return " | ".join(tokens)
+
+        logger.info("Keyword search started")
+
+        clean_query = build_tsquery(query)
 
         sql = """
-            SELECT id, content, metadata,
-                   paradedb.score(id) AS score
-            FROM documents
-            WHERE content @@@ paradedb.match('content', %s)
+        WITH q AS (
+            SELECT to_tsquery(%s, %s) AS query
+        )
+        SELECT
+            id,
+            content,
+            metadata,
+            ts_rank_cd(content_tsv, q.query) AS score
+        FROM documents, q
+        WHERE content_tsv @@ q.query
         """
 
-        params = [query]
+        params = [self.kw_config, clean_query]
 
         if filters:
             conditions = []
             for key, value in filters.items():
-                conditions.append(f"metadata->>%s = %s")
+                conditions.append("metadata->>%s = %s")
                 params.extend([key, value])
 
             sql += " AND " + " AND ".join(conditions)
@@ -239,7 +262,25 @@ class PgStore(BaseDocumentStore):
                     cur.execute(sql, params)
                     return cur.fetchall()
 
-        rows = db_retry(settings.DB_POOL_MAX_CONNS)(_db_op)()
+        rows = db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
+
+        logger.info("Keyword search completed")
+        print('sql: ', sql)
+        print('params: ', params)
+        print('rows are: ', rows)
+
+        x = [
+            RetrievedDocument(
+                id=r[0],
+                content=r[1],
+                metadata=r[2],
+                retrieval_type=RetrievalType.SPARSE,
+                scores=ScoreBreakdown(sparse_retrieval_score=r[3]),
+            )
+            for r in rows
+        ]
+
+        print(x)
 
         return [
             RetrievedDocument(
@@ -247,12 +288,12 @@ class PgStore(BaseDocumentStore):
                 content=r[1],
                 metadata=r[2],
                 retrieval_type=RetrievalType.SPARSE,
-                scores=ScoreBreakdown(dense_retrieval_score=r[3])
+                scores=ScoreBreakdown(sparse_retrieval_score=r[3]),
             )
             for r in rows
         ]
 
-    @db_retry(retries=settings.DB_POOL_MAX_CONNS)
+    @db_retry(retries=settings.RAG_DB_POOL_MAX_CONNS)
     def get_max_chunk_id(self):
         with get_connection(self.db_pool) as conn:
             with conn.cursor() as cur:

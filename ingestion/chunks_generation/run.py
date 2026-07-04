@@ -7,7 +7,7 @@ from ingestion.chunks_generation.analysis.generate_chunks_stats import generate_
 from ingestion.chunks_generation.config import ChunkingConfig
 from app.core.utils import write_jsonl, reset_jsonl, find_positions, extract_last_jsonl_object, build_jsonl_index
 from app.core.tokenizer import tokenizer
-from ingestion.chunks_generation.utils.nlp import nlp
+from app.infra.dependencies import get_nlp
 from app.core.config import settings
 
 import logging
@@ -18,6 +18,8 @@ from tqdm import tqdm
 from pathlib import Path
 import logging
 import re
+
+nlp = get_nlp()
 
 def run_pipeline(chunking_config: ChunkingConfig, input_path: Path, output_path: Path):
     try:
