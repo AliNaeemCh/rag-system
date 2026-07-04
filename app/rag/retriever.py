@@ -21,7 +21,7 @@ class Retriever:
                  ) -> dict[str, RetrievedDocument]:
         """
         1. Embed query
-        2. Vector
+        2. Vector search
         3. Keyword search
         4. Return top-k docs
         """
