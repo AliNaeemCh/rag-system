@@ -12,7 +12,7 @@ class MessageRewriter:
         self.system_prompt = system_prompt
         self.output_schema = output_schema
 
-    def rewrite(self, message: str, chat_history: list = [], keyword_exclusion_list: list[str] = [], temperature: float = 0) -> str:
+    def rewrite(self, message: str, chat_history: list = [], temperature: float = 0) -> str:
         """
         Rewrite user query into retrieval-optimized query.
         """
