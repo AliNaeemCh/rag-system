@@ -51,10 +51,7 @@ class RAGPipeline:
 
             # 3. Rewrite message (uses context)
             if response_mode != ResponseMode.FAST:
-                rewritten_message = self.rewriter.rewrite(message=user_message,
-                                                                    chat_history=chat_history,
-                                                                    keyword_exclusion_list=settings.REWRITER_KW_EXCLUDE_LIST,
-                                                                    temperature=rewriter_temperature)
+                rewritten_message = self.rewriter.rewrite(message=user_message, chat_history=chat_history, temperature=rewriter_temperature)
 
                 logger.debug(f"Rewritten message for retriever: {rewritten_message}")
 
