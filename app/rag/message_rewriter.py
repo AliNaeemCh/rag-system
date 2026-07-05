@@ -26,12 +26,7 @@ class MessageRewriter:
 
         # 3. Extract required fields
         rewritten_message = response["rewritten_message"]
-        rewritten_message_lower = response["rewritten_message"].lower()
-        keywords = response["keywords"]
-        exclusion_set = {kw.lower() for kw in keyword_exclusion_list}
-        keywords = [kw for kw in keywords if (kw_lower := kw.lower()) not in exclusion_set and kw_lower not in rewritten_message_lower]
-        keywords_str = ", ".join(keywords)
 
         logger.info("Message rewriting completed")
 
-        return rewritten_message, keywords_str
+        return rewritten_message
