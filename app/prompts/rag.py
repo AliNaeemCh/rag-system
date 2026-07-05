@@ -15,8 +15,7 @@ Rewrite the user’s message so it is self-contained and understandable without 
 * Do not add new information or make assumptions.
 * Resolve vague references (e.g., “it”, “this”, “that”) when their meaning is clearly implied by context.
 * Expand abbreviations and acronyms into their full forms when their meaning is clear from the message or context.
-* If the message is already clear, return it unchanged.
-* Provide 3–8 keywords representing the main focus of the user message (nouns or noun phrases only), using synonyms or alternate phrasings where possible. Do not introduce new meaning or answer the message through the keywords."""
+* If the message is already clear, return it unchanged."""
 
 REWRITER_SCHEMA = {
     "type": "object",
@@ -24,16 +23,9 @@ REWRITER_SCHEMA = {
         "rewritten_message": {
             "type": "string",
             "description": "Self-contained rewritten version of the user message"
-        },
-        "keywords": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            },
-            "description": "3–8 topic keywords"
         }
     },
-    "required": ["rewritten_message", "keywords"],
+    "required": ["rewritten_message"],
     "additionalProperties": False
 }
 

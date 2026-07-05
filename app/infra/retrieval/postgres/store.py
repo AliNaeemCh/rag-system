@@ -3,13 +3,11 @@ from app.models import RetrievedDocument, RetrievalType, ScoreBreakdown
 from app.infra.db.session import get_connection
 from app.infra.db.retry import db_retry
 from app.core.config import settings
-from app.infra.dependencies import get_nlp
 
 import logging
 logger = logging.getLogger("app.infra.vector_stores.pg_vector_store.store")
 logger.info("Loading file...")
 
-nlp = get_nlp()
 from psycopg2.extras import execute_values, Json
 from psycopg2.pool import SimpleConnectionPool
 
@@ -213,14 +211,7 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
     ) -> list[RetrievedDocument]:
 
         def build_tsquery(query: str) -> str:
-            doc = nlp(query)
-
-            tokens = [
-                token.text
-                for token in doc
-            ]
-
-            return " | ".join(tokens)
+            return " | ".join(query.split())
 
         logger.info("Keyword search started")
 
@@ -265,22 +256,6 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
         rows = db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
 
         logger.info("Keyword search completed")
-        print('sql: ', sql)
-        print('params: ', params)
-        print('rows are: ', rows)
-
-        x = [
-            RetrievedDocument(
-                id=r[0],
-                content=r[1],
-                metadata=r[2],
-                retrieval_type=RetrievalType.SPARSE,
-                scores=ScoreBreakdown(sparse_retrieval_score=r[3]),
-            )
-            for r in rows
-        ]
-
-        print(x)
 
         return [
             RetrievedDocument(

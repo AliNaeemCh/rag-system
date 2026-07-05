@@ -12,12 +12,6 @@ def create_hf_inference_client(hf_token: str):
     from huggingface_hub import InferenceClient
     return InferenceClient(provider="hf-inference", api_key=hf_token)
 
-def get_nlp():
-    import spacy
-    nlp = spacy.load("en_core_web_sm")
-
-    return nlp
-
 # ML models
 def get_reranker_model(model_path: Path):
     from sentence_transformers import CrossEncoder

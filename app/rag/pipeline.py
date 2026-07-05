@@ -47,21 +47,19 @@ class RAGPipeline:
             else:
                 chat_history = []
 
-            message_for_retriever = rewritten_message = user_message
+            rewritten_message = user_message
 
             # 3. Rewrite message (uses context)
             if response_mode != ResponseMode.FAST:
-                rewritten_message, keywords = self.rewriter.rewrite(message=user_message,
+                rewritten_message = self.rewriter.rewrite(message=user_message,
                                                                     chat_history=chat_history,
                                                                     keyword_exclusion_list=settings.REWRITER_KW_EXCLUDE_LIST,
                                                                     temperature=rewriter_temperature)
-                
-                message_for_retriever = rewritten_message + '\n' + keywords
 
-                logger.debug(f"Rewritten message for retriever: {message_for_retriever}")
+                logger.debug(f"Rewritten message for retriever: {rewritten_message}")
 
             # 4. Retrieve documents
-            docs = self.retriever.retrieve(message_for_retriever, ef_search=settings.HNSW_EF_SEARCH)
+            docs = self.retriever.retrieve(rewritten_message, ef_search=settings.HNSW_EF_SEARCH)
 
             logger.debug(f"Retrived docs are:\n{docs}")
 

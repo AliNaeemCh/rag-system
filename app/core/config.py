@@ -56,9 +56,6 @@ class Settings(BaseSettings):
     RETRIEVAL_INSTRUCTION: str = ""
     EMBEDDING_DIMENSIONS: int = 768
 
-    # Message rewriter
-    REWRITER_KW_EXCLUDE_LIST: list[str] = ["Systems Limited", "Systems Ltd."]
-
     # Reranker
     RERANKER_MODEL: str = "ms-marco-MiniLM-L12-v2"   # ms-marco-MiniLM-L12-v2: 33.4M params. Max. seq. length: 512
     
