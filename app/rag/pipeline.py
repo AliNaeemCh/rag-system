@@ -60,14 +60,15 @@ class RAGPipeline:
 
             logger.debug(f"Retrived docs are:\n{docs}")
 
-            # 5. Rank fusion
-            docs = reciprocal_rank_fusion(
-                dense_docs=docs['dense_docs'],
-                sparse_docs=docs['sparse_docs'],
-                top_k=settings.FUSED_TOP_K
-            )
+            if docs['dense_docs'] and docs['sparse_docs']:
+                # 5. Rank fusion
+                docs = reciprocal_rank_fusion(
+                    dense_docs=docs['dense_docs'],
+                    sparse_docs=docs['sparse_docs'],
+                    top_k=settings.FUSED_TOP_K
+                )
 
-            logger.debug(f"Reciprocal rank fused docs are:\n{docs}")
+                logger.debug(f"Reciprocal rank fused docs are:\n{docs}")
 
             final_top_docs = docs[:settings.FINAL_TOP_K]
 

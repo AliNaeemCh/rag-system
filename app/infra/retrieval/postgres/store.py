@@ -13,18 +13,17 @@ from psycopg2.pool import SimpleConnectionPool
 
 class PgStore(BaseRetrievalStore, BaseDocumentStore):
     """
-    PostgreSQL + pgvector (cosine similarity + HNSW index) +  Keyword search
+    PostgreSQL + pgvector (cosine similarity + HNSW index)
     - embeddings stored in Postgres
     - cosine similarity as default metric
     - HNSW index for ANN retrieval
     """
 
-    def __init__(self, db_pool: SimpleConnectionPool, embedding_dim: int, m: int, ef_construction: int, kw_config: str = 'english'):
+    def __init__(self, db_pool: SimpleConnectionPool, embedding_dim: int, m: int, ef_construction: int):
         self.embedding_dim = embedding_dim
         self.m = m
         self.ef_construction = ef_construction
         self.db_pool = db_pool
-        self.kw_config = kw_config
         self._ensure_schema()
 
     @db_retry(retries=settings.RAG_DB_POOL_MAX_CONNS)
@@ -42,9 +41,6 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
                         id BIGSERIAL PRIMARY KEY,
                         content TEXT NOT NULL,
                         embedding VECTOR({self.embedding_dim}),
-                        content_tsv tsvector GENERATED ALWAYS AS (
-                            to_tsvector('{self.kw_config}', content)
-                        ) STORED,
                         metadata JSONB,
                         created_at TIMESTAMPTZ DEFAULT NOW()
                     );
@@ -62,15 +58,6 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
                         ef_construction = {self.ef_construction}
                     );
                 """)
-
-                # -------------------------
-                # Keyword search index
-                # -------------------------
-                cur.execute("""
-                    CREATE INDEX IF NOT EXISTS documents_content_gin
-                    ON documents
-                    USING GIN (content_tsv);
-                """)
     
     @db_retry(retries=settings.RAG_DB_POOL_MAX_CONNS)
     def reset_store(self):
@@ -80,7 +67,7 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
                 cur.execute("DROP TABLE IF EXISTS documents;")
 
         # 2. Recreate using existing logic
-        self._ensure_schema(self.kw_config)
+        self._ensure_schema()
 
     def add_document(
         self,
@@ -209,64 +196,10 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
         top_k: int,
         filters: dict | None = None,
     ) -> list[RetrievedDocument]:
+        
+        # Keyword search not implemented
 
-        def build_tsquery(query: str) -> str:
-            return " | ".join(query.split())
-
-        logger.info("Keyword search started")
-
-        clean_query = build_tsquery(query)
-
-        sql = """
-        WITH q AS (
-            SELECT to_tsquery(%s, %s) AS query
-        )
-        SELECT
-            id,
-            content,
-            metadata,
-            ts_rank_cd(content_tsv, q.query) AS score
-        FROM documents, q
-        WHERE content_tsv @@ q.query
-        """
-
-        params = [self.kw_config, clean_query]
-
-        if filters:
-            conditions = []
-            for key, value in filters.items():
-                conditions.append("metadata->>%s = %s")
-                params.extend([key, value])
-
-            sql += " AND " + " AND ".join(conditions)
-
-        sql += """
-            ORDER BY score DESC
-            LIMIT %s
-        """
-
-        params.append(top_k)
-
-        def _db_op():
-            with get_connection(self.db_pool) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(sql, params)
-                    return cur.fetchall()
-
-        rows = db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
-
-        logger.info("Keyword search completed")
-
-        return [
-            RetrievedDocument(
-                id=r[0],
-                content=r[1],
-                metadata=r[2],
-                retrieval_type=RetrievalType.SPARSE,
-                scores=ScoreBreakdown(sparse_retrieval_score=r[3]),
-            )
-            for r in rows
-        ]
+        return []
 
     @db_retry(retries=settings.RAG_DB_POOL_MAX_CONNS)
     def get_max_chunk_id(self):
