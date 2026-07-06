@@ -17,6 +17,7 @@ class BaseEmbeddingProvider(ABC):
         pass
 
     def _normalize_embeddings(
+        self,
         embeddings: Union[List[float], List[List[float]]]
     ) -> Union[List[float], List[List[float]]]:
 

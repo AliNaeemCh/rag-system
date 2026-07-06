@@ -1,0 +1,9 @@
+__pycache__/
+*.log
+.git
+data/
+logs/
+venv/
+*.pyc
+.env
+models/embedding/

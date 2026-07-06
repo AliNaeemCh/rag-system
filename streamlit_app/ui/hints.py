@@ -25,7 +25,7 @@ def render_hints():
 
             hints = [
 
-                "What is the core business of Systems Ltd.?",
+                "Which services does Systems Ltd. offer?",
                 "Who is the CEO of Systems Ltd.?",
                 "What was Systems Ltd.’s profit in 2025?"
 

@@ -69,6 +69,12 @@ class RAGPipeline:
                 )
 
                 logger.debug(f"Reciprocal rank fused docs are:\n{docs}")
+            
+            else:
+                if docs['dense_docs']:
+                    docs = docs['dense_docs']
+                elif docs['sparse_docs']:
+                    docs = docs['sparse_docs']
 
             final_top_docs = docs[:settings.FINAL_TOP_K]
 
