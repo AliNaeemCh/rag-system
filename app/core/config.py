@@ -65,25 +65,8 @@ class Settings(BaseSettings):
 
     # DBs
 
-    # - RAG DB
-    RAG_DB_USER: str
-    RAG_DB_PASSWORD: str
-    RAG_DB_HOST: str
-    RAG_DB_PORT: int
-    RAG_DB_NAME: str
-
-    RAG_DB_POOL_MAX_CONNS: int = Field(default=10, gt=0)
-
-    @property
-    def RAG_DB_URL(self) -> str:
-        return (
-            f"postgresql://{self.RAG_DB_USER}:"
-            f"{self.RAG_DB_PASSWORD}@"
-            f"{self.RAG_DB_HOST}:"
-            f"{self.RAG_DB_PORT}/"
-            f"{self.RAG_DB_NAME}"
-        )
-
+    DB_POOL_MAX_CONNS: int = Field(default=10, gt=0)
+        
     # - Usage tracker
     USAGE_TRACKER_DB_USER: str | None = None
     USAGE_TRACKER_DB_PASSWORD: str | None = None
@@ -110,6 +93,13 @@ class Settings(BaseSettings):
     HNSW_M: int = 16
     HNSW_EF_CONSTRUCTION: int = 64
     HNSW_EF_SEARCH: int = 40
+
+    # OpenSearch
+    OPENSEARCH_USERNAME: str
+    OPENSEARCH_PASSWORD: str
+    OPENSEARCH_HOST: str
+    OPENSEARCH_POOL_MAXSIZE: int = 10
+    OPENSEARCH_INDEX_NAME: str = "sys_annual_2025_rag"
 
     # RAG
     DENSE_TOP_K: int = Field(default=50, ge=1, le=100)
