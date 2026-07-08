@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     RERANKER_MODEL: str = "ms-marco-MiniLM-L12-v2"   # ms-marco-MiniLM-L12-v2: 33.4M params. Max. seq. length: 512
     
     @property
+    def RERANKER_ONX_MODEL_PATH(self) -> str:
+        return BASE_DIR / "models" / "cross_encoder" / (self.RERANKER_MODEL + "_onnx")
+
+    @property
     def RERANKER_MODEL_PATH(self) -> str:
         return BASE_DIR / "models" / "cross_encoder" / self.RERANKER_MODEL
 
@@ -81,7 +85,7 @@ class Settings(BaseSettings):
             f"{self.RAG_DB_PASSWORD}@"
             f"{self.RAG_DB_HOST}:"
             f"{self.RAG_DB_PORT}/"
-            f"{self.RAG_DB_NAME}"
+            f"{self.RAG_DB_NAME}?sslmode=require&channel_binding=require"
         )
 
     # - Usage tracker
@@ -101,7 +105,7 @@ class Settings(BaseSettings):
                 f"{self.USAGE_TRACKER_DB_PASSWORD}@"
                 f"{self.USAGE_TRACKER_DB_HOST}:"
                 f"{int(self.USAGE_TRACKER_DB_PORT)}/"
-                f"{self.USAGE_TRACKER_DB_NAME}"
+                f"{self.USAGE_TRACKER_DB_NAME}?sslmode=require&channel_binding=require"
             )
         else:
             return None

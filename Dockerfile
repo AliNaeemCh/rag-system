@@ -9,14 +9,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # install python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements_prod.txt .
+RUN pip install --no-cache-dir -r requirements_prod.txt
 
 # copy project
 COPY app/ app/
 COPY streamlit_app/ streamlit_app/
 COPY run.py .
-COPY models/cross_encoder/ models/cross_encoder/
+COPY models/cross_encoder/ms-marco-MiniLM-L12-v2_onnx models/cross_encoder/ms-marco-MiniLM-L12-v2_onnx
 COPY start.sh .
 
 EXPOSE 8000
