@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSIONS: int = 768
 
     # Reranker
+    RERANKER_URL: str
     RERANKER_MODEL: str = "ms-marco-MiniLM-L12-v2"   # ms-marco-MiniLM-L12-v2: 33.4M params. Max. seq. length: 512
     
     @property

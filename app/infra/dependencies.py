@@ -52,13 +52,12 @@ def build_rag_pipeline():
     llm_rewriter = OpenAIEngine(model_name=settings.REWRITER_MODEL, client=openai_client, usage_tracker=usage_tracker, check_usage=False)
     rag_db_pool = get_rag_db_pool()
     pg_store = PgStore(db_pool=rag_db_pool, embedding_dim=settings.EMBEDDING_DIMENSIONS, m=settings.HNSW_M, ef_construction=settings.HNSW_EF_CONSTRUCTION)
-    session, tokenizer = get_reranker_model(settings.RERANKER_ONX_MODEL_PATH)
     hf_inference_client = create_hf_inference_client(settings.HF_TOKEN)
     embedding_model = "sentence-transformers/" + settings.EMBEDDING_MODEL
     embedding_provider = HuggingFaceEmbeddingProvider(client=hf_inference_client, model=embedding_model, retrieval_instruction=settings.RETRIEVAL_INSTRUCTION)
     rewriter = MessageRewriter(llm=llm_rewriter, system_prompt=REWRITER_SYSTEM_PROMPT, output_schema=REWRITER_SCHEMA)
     retriever = Retriever(embedding_provider=embedding_provider, retrieval_store=pg_store, dense_top_k=settings.DENSE_TOP_K, sparse_top_k=settings.SPARSE_TOP_K)
-    reranker = Reranker(session=session, tokenizer=tokenizer, top_k=settings.FINAL_TOP_K)
+    reranker = Reranker(api_url=settings.RERANKER_URL, top_k=settings.FINAL_TOP_K)
     generator = Generator(llm_generator, system_prompt=GENERATOR_SYSTEM_PROMPT)
 
     return RAGPipeline(
