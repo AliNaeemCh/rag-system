@@ -1,11 +1,11 @@
 services:
   app:
-    image: alinaeemch/rag-system
+    image: alinaeemch/rag-system-backend
     container_name: rag-system
     env_file:
       - .env.prod
     expose:
-      - "8501"
+      - "8000"
     restart: unless-stopped
 
   nginx:

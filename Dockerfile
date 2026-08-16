@@ -8,11 +8,10 @@ RUN pip install --no-cache-dir -r requirements_prod.txt
 
 # copy project
 COPY app/ app/
-COPY streamlit_app/ streamlit_app/
 COPY run.py .
 COPY start.sh .
 
-EXPOSE 8501
+EXPOSE 8000
 
 # start script
 CMD ["bash", "start.sh"]

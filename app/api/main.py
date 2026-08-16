@@ -13,6 +13,7 @@ logger = logging.getLogger("app.api.main")
 logger.info("Loading file...")
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -35,4 +36,15 @@ app = FastAPI(
 )
 
 app.add_middleware(PayloadLimitMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://d3v7a184z6qq5v.cloudfront.net"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(chat_router, prefix="/api/v1")
