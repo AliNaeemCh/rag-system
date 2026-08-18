@@ -110,10 +110,10 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
         async def _db_op():
             async with get_connection(self.db_pool) as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute_many(
+                    await cur.executemany(
                         """
                         INSERT INTO documents (id, content, embedding, metadata)
-                        VALUES %s
+                        VALUES (%s, %s, %s, %s)
                         """,
                         rows,
                     )
@@ -204,5 +204,5 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
         async with get_connection(self.db_pool) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("SELECT COALESCE(MAX(id), 0) FROM documents;")
-                chunk_id = await cur.fetchone()[0]
+                chunk_id = (await cur.fetchone())[0]
                 return chunk_id

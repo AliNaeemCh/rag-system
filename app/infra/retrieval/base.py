@@ -70,14 +70,14 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def reset_store(self) -> None:
+    async def reset_store(self) -> None:
         """
         Reset the store for re-ingestion pipelines
         """
         pass
 
     @abstractmethod
-    def get_max_chunk_id(self) -> int:
+    async def get_max_chunk_id(self) -> int:
         """
         Useful for resuming ingestion safely
         """

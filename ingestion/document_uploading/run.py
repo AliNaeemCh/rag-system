@@ -14,8 +14,11 @@ logger.info("Loading file...")
 
 from tqdm import tqdm
 from pathlib import Path
+import sys
+import selectors
+import asyncio
 
-def run_pipeline(
+async def run_pipeline(
         config: DocumentUploadingPipelineConfig,
         document_store: BaseDocumentStore,
         chunks_jsonl_path: Path,
@@ -25,7 +28,7 @@ def run_pipeline(
         logger.info("Initializing pipeline...")
 
         batch = []
-        last_processed_chunk_id = document_store.get_max_chunk_id()
+        last_processed_chunk_id = await document_store.get_max_chunk_id()
         total = 0
 
         if not config.resume:
@@ -33,7 +36,7 @@ def run_pipeline(
                 while True:
                     user_in = input(f"\033[93mWarning:\033[0m Previously processed documents ({last_processed_chunk_id}) will be deleted. Type 'confirm' to proceed: ")
                     if user_in == "confirm":
-                        document_store.reset_store()
+                        await document_store.reset_store()
                         break
                     else:
                         print("Invalid input. Try again!")
@@ -82,14 +85,14 @@ def run_pipeline(
             total += 1
 
             if len(batch) >= config.batch_size:
-                document_store.add_documents_bulk(batch)
+                await document_store.add_documents_bulk(batch)
                 batch.clear()
                 pbar.n = int(progress * 100)
                 pbar.refresh()
 
         # flush remaining
         if batch:
-            document_store.add_documents_bulk(batch)
+            await document_store.add_documents_bulk(batch)
 
         pbar.n = 100
         pbar.refresh()
@@ -102,22 +105,36 @@ def run_pipeline(
 
 async def main():
 
-    config = DocumentUploadingPipelineConfig(resume=False)
+    try:
+        config = DocumentUploadingPipelineConfig(resume=False)
 
-    rag_db_pool = get_rag_db_pool()
+        rag_db_pool = get_rag_db_pool()
+        await rag_db_pool.open()
 
+        pg_store: BaseDocumentStore = PgStore(
+            db_pool=rag_db_pool,
+            embedding_dim=settings.EMBEDDING_DIMENSIONS,
+            m=settings.HNSW_M,
+            ef_construction=settings.HNSW_EF_CONSTRUCTION
+        )
+        await pg_store.ensure_schema()
 
-    pg_store: BaseDocumentStore = PgStore(
-        db_pool=rag_db_pool,
-        embedding_dim=settings.EMBEDDING_DIMENSIONS,
-        m=settings.HNSW_M,
-        ef_construction=settings.HNSW_EF_CONSTRUCTION
+        await run_pipeline(
+            document_store=pg_store,
+            config=config,
+            chunks_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
+            embeddings_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_embeddings.jsonl",
+        )
+
+    finally:
+        await rag_db_pool.close()
+
+if sys.platform == "win32":
+    asyncio.run(
+        main(),
+        loop_factory=lambda: asyncio.SelectorEventLoop(
+            selectors.SelectSelector()
+        ),
     )
-    await pg_store.ensure_schema()
-
-    run_pipeline(
-        document_store=pg_store,
-        config=config,
-        chunks_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
-        embeddings_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_embeddings.jsonl",
-    )
+else:
+    asyncio.run(main())
