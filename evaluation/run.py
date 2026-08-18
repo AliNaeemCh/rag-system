@@ -113,6 +113,7 @@ def run_pipeline(config: EvalConfig,
         def create_config_object():
 
             dataset_gen_config = EvalDatasetGeneratorConfig()
+            chunking_config = ChunkingConfig()
 
             config_obj = {
                 "response_mode": config.response_mode.value,
@@ -140,10 +141,10 @@ def run_pipeline(config: EvalConfig,
                         "ef_search": settings.HNSW_EF_SEARCH
                     },
                     "chunking": {
-                        "chunk_size": ChunkingConfig.chunk_size,
-                        "chunk_overlap_pct": ChunkingConfig.chunk_overlap_pct,
-                        "cross_section_overlap": ChunkingConfig.cross_section_overlap,
-                        "overlap_granularity": ChunkingConfig.overlap_granularity.value
+                        "chunk_size": chunking_config.chunk_size,
+                        "chunk_overlap_pct": chunking_config.chunk_overlap_pct,
+                        "cross_section_overlap": chunking_config.cross_section_overlap,
+                        "overlap_granularity": chunking_config.overlap_granularity.value
                     },
                     "top_ks": {
                         "dense_retrieval": settings.DENSE_TOP_K,

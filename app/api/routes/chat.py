@@ -32,7 +32,7 @@ class ChatResponse(BaseModel):
         Depends(verify_key),
         Depends(rate_limit)
     ])
-async def chat_endpoint(
+def chat_endpoint(
     request: ChatRequest,
     pipeline: RAGPipeline = Depends(rag_pipeline),
 ):
