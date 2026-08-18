@@ -14,23 +14,23 @@ logger.info("Loading file...")
 
 import math
 from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from collections import deque
+import asyncio
+import sys
+import selectors
 
-def embed_batch(embedding_provider: BaseEmbeddingProvider, texts: list[str], normalize: bool = True, batch_size: int | None = None):
-    return embedding_provider.embed_documents(texts, normalize=normalize, batch_size = batch_size)
+async def embed_batch(embedding_provider: BaseEmbeddingProvider, texts: list[str], normalize: bool = True, batch_size: int | None = None):
+    return await embedding_provider.embed_documents(texts, normalize=normalize, batch_size = batch_size)
 
-def run_pipeline(config: EmbeddingPipelineConfig, input_path: Path, output_path: Path):
+async def run_pipeline(config: EmbeddingPipelineConfig, input_path: Path, output_path: Path):
     try:
         logger.info("Initializing pipeline...")
         embedding_model = get_embedding_model(settings.EMBEDDING_MODEL_PATH)
         embedding_provider = SentenceTransformerEmbeddingProvider(model=embedding_model)
 
-        # Thread pool for API calls
-        executor = ThreadPoolExecutor(max_workers=config.num_workers)
-        futures = deque()
-        future_to_metadata = {}
+        tasks = deque()
+        task_to_metadata = {}
 
         batch_texts = []
         batch_chunk_ids = []
@@ -80,39 +80,39 @@ def run_pipeline(config: EmbeddingPipelineConfig, input_path: Path, output_path:
 
             # submit batch to worker
             if len(batch_texts) >= config.batch_size:
-                if len(futures) >= config.num_workers:
-                    future = futures.popleft()
-                    embeddings = future.result()
+                if len(tasks) >= config.max_concurrency:
+                    task = tasks.popleft()
+                    embeddings = await task
 
                     if not embeddings:
                         raise Exception("Undefined embedding(s)")
 
                     objects = []
 
-                    for i in range(len(future_to_metadata[future]['chunk_ids'])):
+                    for i in range(len(task_to_metadata[task]['chunk_ids'])):
                         objects.append(
                             {
-                                "chunk_id": future_to_metadata[future]['chunk_ids'][i],
+                                "chunk_id": task_to_metadata[task]['chunk_ids'][i],
                                 "embedding": embeddings[i]
                             }
                         )
                     
                     write_jsonl(objects, output_path)
-                    del future_to_metadata[future]
+                    del task_to_metadata[task]
 
                     pbar.n = int(progress * 100)
                     pbar.refresh()
                 
-                future = executor.submit(
-                        embed_batch,
+                task = asyncio.create_task(
+                        embed_batch(
                         embedding_provider,
                         batch_texts.copy(),
                         normalize=True,
                         batch_size=config.batch_size
-                        )
-                futures.append(future)
+                        ))
+                tasks.append(task)
                 # store metadata aligned with this batch
-                future_to_metadata[future] = {
+                task_to_metadata[task] = {
                     "chunk_ids": batch_chunk_ids.copy()
                 }
 
@@ -120,50 +120,49 @@ def run_pipeline(config: EmbeddingPipelineConfig, input_path: Path, output_path:
                 batch_chunk_ids.clear()
 
         # -------------------------
-        # FLUSH REMAINING BATCH & FUTURES
+        # FLUSH REMAINING BATCH & TASKS
         # -------------------------
         if batch_texts:
-            future = executor.submit(
-                    embed_batch,
+            task = asyncio.create_task(
+                    embed_batch(
                     embedding_provider,
                     batch_texts.copy(),
                     normalize=True,
                     batch_size=config.batch_size
-                    )
-            futures.append(future)
-            future_to_metadata[future] = {
+                    ))
+            tasks.append(task)
+            task_to_metadata[task] = {
                 "chunk_ids": batch_chunk_ids.copy()
             }
 
             batch_texts.clear()
             batch_chunk_ids.clear()
 
-            while futures:
-                future = futures.popleft()
-                embeddings = future.result()
+            while tasks:
+                task = tasks.popleft()
+                embeddings = await task
 
                 if not embeddings:
                     raise Exception("Undefined embedding(s)")
 
                 objects = []
 
-                for i in range(len(future_to_metadata[future]['chunk_ids'])):
+                for i in range(len(task_to_metadata[task]['chunk_ids'])):
                     objects.append(
                         {
-                            "chunk_id": future_to_metadata[future]['chunk_ids'][i],
+                            "chunk_id": task_to_metadata[task]['chunk_ids'][i],
                             "embedding": embeddings[i]
                         }
                     )
                 
                 write_jsonl(objects, output_path)
-                del future_to_metadata[future]
+                del task_to_metadata[task]
 
                 pbar.n = 100
                 pbar.refresh()
 
         pbar.n = 100
         pbar.refresh()
-        executor.shutdown(wait=True)
 
         logger.info(f"Embedding Generation Completed | Total Docs = {total} | Total Batches = {math.ceil(total/config.batch_size)}")
 
@@ -171,10 +170,22 @@ def run_pipeline(config: EmbeddingPipelineConfig, input_path: Path, output_path:
         logger.exception(f"Embedding Generation Failed!")
         return
 
-config = EmbeddingPipelineConfig(resume = True)
+config = EmbeddingPipelineConfig(resume = False)
 
-run_pipeline(
-    config=config,
-    input_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
-    output_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_embeddings.jsonl",
-)
+async def main():
+
+    await run_pipeline(
+        config=config,
+        input_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
+        output_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_embeddings.jsonl",
+    )
+
+if sys.platform == "win32":
+    asyncio.run(
+        main(),
+        loop_factory=lambda: asyncio.SelectorEventLoop(
+            selectors.SelectSelector()
+        ),
+    )
+else:
+    asyncio.run(main())

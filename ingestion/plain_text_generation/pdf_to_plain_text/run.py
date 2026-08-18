@@ -12,6 +12,8 @@ logger = logging.getLogger("ingestion.plain_text_generation.pdf_to_plain_text.ru
 logger.info("Loading file...")
 
 import asyncio
+import sys
+import selectors
 
 raw_config = {
     "pdf_path": settings.RAW_DATA_DIR / "SYS Limited Annual - 2025.pdf",
@@ -90,4 +92,12 @@ async def main():
   ingestor = PDFIngestor(llm_engine=pdf_ingestor_llm_engine, fallback_llm_engine=pdf_ingestor_fallback_llm_engine)
   await ingestor.ingest(pdf_config)
 
-asyncio.run(main())
+if sys.platform == "win32":
+    asyncio.run(
+        main(),
+        loop_factory=lambda: asyncio.SelectorEventLoop(
+            selectors.SelectSelector()
+        ),
+    )
+else:
+    asyncio.run(main())

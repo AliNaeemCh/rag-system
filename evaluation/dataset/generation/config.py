@@ -16,7 +16,7 @@ class EvalQuestionType(str, Enum):
 class EvalDatasetGeneratorConfig:
     eval_set_size: int = 201
     multi_chunk_max_qs: int = settings.FINAL_TOP_K
-    num_workers: int = 3
+    max_concurrency: int = 3
     seed: int = 11
     llm_temperature: float = 1
     resume: bool = True

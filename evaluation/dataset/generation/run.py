@@ -16,10 +16,11 @@ logger = logging.getLogger("evaluation.dataset.generation.run")
 logger.info("Loading file...")
 
 import math
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from tqdm import tqdm
 import asyncio
+import selectors
+import sys
 
 def generate_chunk_ids(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatasetGeneratorConfig) -> dict[EvalQuestionType, list[int] | list[list[int]]]:
     total_question_types = len(EvalQuestionType)
@@ -75,7 +76,7 @@ def generate_chunk_ids(eval_dataset_generator: EvalDatasetGenerator, config: Eva
         EvalQuestionType.MULTI_CHUNK: multi_chunk_qs_chunk_ids
     }
 
-def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatasetGeneratorConfig, dataset_path: Path):
+async def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatasetGeneratorConfig, dataset_path: Path):
     try:
         logger.info("Initializing pipeline...")
 
@@ -117,42 +118,93 @@ def run_pipeline(eval_dataset_generator: EvalDatasetGenerator, config: EvalDatas
         question_type_to_chunk_ids = generate_chunk_ids(eval_dataset_generator, config)
 
         # Questions generation
-        with ThreadPoolExecutor(max_workers=config.num_workers) as executor:
-            futures = []
-            future_to_metadata = {}
-            for q_type, chunk_ids in question_type_to_chunk_ids.items():
-                system_prompt = FACTUAL_QS_GENERATOR_SYSTEM_PROMPT
-                if q_type == EvalQuestionType.INFERENCE:
-                    system_prompt = INFERENCE_QS_GENERATOR_SYSTEM_PROMPT
-                for chunk_id in chunk_ids:
-                    if isinstance(chunk_id, int):
-                        chunk_id = [chunk_id]
-                    if all(x in completed_chunk_ids for x in chunk_id):
-                        continue
-                    # 1. Submit all
-                    future = executor.submit(eval_dataset_generator.create_question, chunk_id, system_prompt, QA_SCHEMA, config.llm_temperature)
-                    futures.append(future)
-                    future_to_metadata[future] = {
-                        "chunk_ids": chunk_id,
-                        "question_type": q_type.value
-                    }
-            # 2. Process as they complete
-            for future in as_completed(futures):
-                result = future.result()
+        tasks = set()
+        task_to_metadata = {}
+        for q_type, chunk_ids in question_type_to_chunk_ids.items():
+            system_prompt = FACTUAL_QS_GENERATOR_SYSTEM_PROMPT
+            if q_type == EvalQuestionType.INFERENCE:
+                system_prompt = INFERENCE_QS_GENERATOR_SYSTEM_PROMPT
+            for chunk_id in chunk_ids:
+                if isinstance(chunk_id, int):
+                    chunk_id = [chunk_id]
+                if all(x in completed_chunk_ids for x in chunk_id):
+                    continue
+                if len(tasks) >= config.max_concurrency:
+                    done, _ = await asyncio.wait(
+                        tasks,
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                    for task in done:
+                        result = task.result()
+
+                        completed_tasks += 1
+
+                        write_jsonl(
+                            data={
+                                "example_id": example_id,
+                                "question_type": task_to_metadata[task]["question_type"],
+                                "chunk_ids": task_to_metadata[task]["chunk_ids"],
+                                "questions": result["questions"],
+                                "answers": result["answers"],
+                            },
+                            output_path=dataset_path,
+                        )
+
+                        example_id += 1
+
+                        del task_to_metadata[task]
+                        tasks.remove(task)
+
+                        pbar.n = int((completed_tasks / total_tasks) * 100)
+                        pbar.refresh()
+
+                task = asyncio.create_task(
+                    eval_dataset_generator.create_question(
+                        chunk_id,
+                        system_prompt,
+                        QA_SCHEMA,
+                        config.llm_temperature,
+                    )
+                )
+
+                tasks.add(task)
+
+                task_to_metadata[task] = {
+                    "chunk_ids": chunk_id,
+                    "question_type": q_type.value,
+                }
+
+        # Drain remaining tasks
+        while tasks:
+            done, _ = await asyncio.wait(
+                tasks,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            for task in done:
+                result = task.result()
+
                 completed_tasks += 1
+
                 write_jsonl(
                     data={
                         "example_id": example_id,
-                        "question_type": future_to_metadata[future]['question_type'],
-                        "chunk_ids": future_to_metadata[future]['chunk_ids'],
-                        "questions": result['questions'],
-                        "answers": result['answers']
+                        "question_type": task_to_metadata[task]["question_type"],
+                        "chunk_ids": task_to_metadata[task]["chunk_ids"],
+                        "questions": result["questions"],
+                        "answers": result["answers"],
                     },
-                    output_path=dataset_path
+                    output_path=dataset_path,
                 )
+
                 example_id += 1
+
+                del task_to_metadata[task]
+                tasks.remove(task)
+
                 pbar.n = int((completed_tasks / total_tasks) * 100)
                 pbar.refresh()
+
         logger.exception("Eval dataset generation completed")
     except Exception:
         logger.exception("Eval dataset generation failed!")
@@ -162,16 +214,24 @@ async def main():
     chunks_index = load_pickle(file_path=settings.PROCESSED_DATA_DIR / "chunks_jsonl_index.pkl")
     chunks_path = settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl"
     dataset_path = settings.EVAL_DATASET_DIR / "eval_dataset.jsonl"
-    config = EvalDatasetGeneratorConfig(resume=True)
+    config = EvalDatasetGeneratorConfig(resume=False)
     openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY)
     usage_tracker = await get_usage_tracker()
     eval_dataset_generator_llm = OpenAIEngine(model_name=settings.EVAL_DATASET_GENERATOR_LLM, client = openai_client, usage_tracker=usage_tracker)
-    eval_dataset_generator = EvalDatasetGenerator(chunks_index=chunks_index, chunks_path=chunks_path, llm=eval_dataset_generator_llm, min_chunk_tokens=ChunkingConfig.chunk_size // 2, seed=config.seed)
+    eval_dataset_generator = EvalDatasetGenerator(chunks_index=chunks_index, chunks_path=chunks_path, llm=eval_dataset_generator_llm, min_chunk_tokens=ChunkingConfig().chunk_size // 2, seed=config.seed)
 
-    run_pipeline(
+    await run_pipeline(
         eval_dataset_generator=eval_dataset_generator,
         config=config,
         dataset_path=dataset_path
     )
 
-asyncio.run(main())
+if sys.platform == "win32":
+    asyncio.run(
+        main(),
+        loop_factory=lambda: asyncio.SelectorEventLoop(
+            selectors.SelectSelector()
+        ),
+    )
+else:
+    asyncio.run(main())

@@ -12,5 +12,5 @@ class EmbeddingPipelineConfig:
     embedding_dim: int = settings.EMBEDDING_DIMENSIONS
     m: int = settings.HNSW_M
     ef_construction: int = settings.HNSW_EF_CONSTRUCTION
-    num_workers: int = 2
+    max_concurrency: int = 2
     resume: bool = True

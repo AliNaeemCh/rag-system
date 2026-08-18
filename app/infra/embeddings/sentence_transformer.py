@@ -5,52 +5,50 @@ import logging
 logger = logging.getLogger("app.infra.embeddings.sentence_transformer")
 logger.info("Loading file...")
 
+import asyncio
+
 class SentenceTransformerEmbeddingProvider(BaseEmbeddingProvider):
 
     def __init__(self, model):
         self.model = model
 
-    def embed_query(
+    async def embed_query(
         self,
         query: str,
-        normalize: bool = True
+        normalize: bool = True,
     ) -> list[float]:
-        """
-        Embed a single query string.
-        """
-        logger.info(f"Query embedding started")
-        
-        emb = self.model.encode_query(
+        logger.info("Query embedding started")
+
+        emb = await asyncio.to_thread(
+            self.model.encode_query,
             query,
             normalize_embeddings=normalize,
             convert_to_numpy=True,
-            show_progress_bar=False
+            show_progress_bar=False,
         )
 
-        logger.info(f"Query embedding completed")
+        logger.info("Query embedding completed")
 
         return emb.tolist()
 
-    def embed_documents(
+    async def embed_documents(
         self,
         documents: list[str] | str,
         batch_size: int | None = None,
-        normalize: bool = True
+        normalize: bool = True,
     ) -> list[list[float]]:
-        """
-        Embed one or multiple documents.
-        """
         batch_size = batch_size or settings.CHUNKS_EMBEDDING_BATCH_SIZE
 
         if isinstance(documents, str):
             documents = [documents]
 
-        embeddings = self.model.encode_document(
+        embeddings = await asyncio.to_thread(
+            self.model.encode_document,
             documents,
             normalize_embeddings=normalize,
             convert_to_numpy=True,
             show_progress_bar=False,
-            batch_size=batch_size
+            batch_size=batch_size,
         )
 
         return embeddings.tolist()
