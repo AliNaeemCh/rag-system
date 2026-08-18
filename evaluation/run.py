@@ -28,6 +28,8 @@ logger.info("Loading file...")
 from pathlib import Path
 from tqdm import tqdm
 import asyncio
+import selectors
+import sys
 
 async def process_example(rag_pipeline: RAGPipeline,
                     retrieval_eval: RetrievalEvaluator,
@@ -52,7 +54,7 @@ async def process_example(rag_pipeline: RAGPipeline,
         eval_mode=True,
         response_mode=response_mode,
         rewriter_temperature=rewriter_temperature,
-        generator_temperature=generator_temperature
+        generator_temperature=generator_temperature,
         )
     
     retrieved_docs = output['final_top_docs']
@@ -113,6 +115,7 @@ async def run_pipeline(config: EvalConfig,
         def create_config_object():
 
             dataset_gen_config = EvalDatasetGeneratorConfig()
+            chunking_config = ChunkingConfig()
 
             config_obj = {
                 "response_mode": config.response_mode.value,
@@ -140,10 +143,10 @@ async def run_pipeline(config: EvalConfig,
                         "ef_search": settings.HNSW_EF_SEARCH
                     },
                     "chunking": {
-                        "chunk_size": ChunkingConfig.chunk_size,
-                        "chunk_overlap_pct": ChunkingConfig.chunk_overlap_pct,
-                        "cross_section_overlap": ChunkingConfig.cross_section_overlap,
-                        "overlap_granularity": ChunkingConfig.overlap_granularity.value
+                        "chunk_size": chunking_config.chunk_size,
+                        "chunk_overlap_pct": chunking_config.chunk_overlap_pct,
+                        "cross_section_overlap": chunking_config.cross_section_overlap,
+                        "overlap_granularity": chunking_config.overlap_granularity.value
                     },
                     "top_ks": {
                         "dense_retrieval": settings.DENSE_TOP_K,
@@ -216,7 +219,7 @@ async def run_pipeline(config: EvalConfig,
             last_obj = {}
             logger.info("Evaluation started")
         
-        logging.getLogger().setLevel(logging.WARNING)   # Silencing logs
+        logging.getLogger().setLevel(logging.DEBUG)   # Silencing logs
             
         if not last_obj:
             config_obj = create_config_object()
@@ -311,8 +314,8 @@ async def run_pipeline(config: EvalConfig,
 
 async def main():
 
-    config = EvalConfig(resume=True)
-    rag_pipeline = build_rag_pipeline()
+    config = EvalConfig(resume=False)
+    rag_pipeline, _ = await build_rag_pipeline()
     openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY)
     usage_tracker = await get_usage_tracker()
     llm_judge = OpenAIEngine(model_name=settings.LLM_JUDGE_MODEL, client=openai_client, usage_tracker=usage_tracker)
@@ -331,4 +334,12 @@ async def main():
         final_result_path=settings.EVAL_RESULTS_DIR / "final_result.json"
     )
 
-asyncio.run(main())
+if sys.platform == "win32":
+    asyncio.run(
+        main(),
+        loop_factory=lambda: asyncio.SelectorEventLoop(
+            selectors.SelectSelector()
+        ),
+    )
+else:
+    asyncio.run(main())
