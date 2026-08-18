@@ -14,7 +14,7 @@ class Generator:
         self.llm = llm
         self.system_prompt = system_prompt
 
-    def generate(
+    async def generate(
         self,
         user_message: str,
         retrieved_context: str,
@@ -31,7 +31,7 @@ class Generator:
         logger.debug(f"Generation started | User message = {user_message}")
 
         system_prompt = self.system_prompt.format(retrieved_context=retrieved_context)
-        response = self.llm.generate(
+        response = await self.llm.generate(
             user_prompt=user_message,
             system_prompt=system_prompt,
             history=history,
@@ -45,17 +45,13 @@ class Generator:
             return response
 
         else:
-            def gen():
-                full_text = ""
-
+            async def gen():
                 try:
-                    for chunk in response:
+                    async for chunk in response:
                         if chunk:
-                            full_text += chunk
                             yield chunk
-
                 except Exception:
-                    logger.exception(f"Streaming error")
+                    logger.exception("Streaming error")
                     raise
 
             return gen()

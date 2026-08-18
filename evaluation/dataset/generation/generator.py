@@ -103,13 +103,13 @@ class EvalDatasetGenerator:
     
     # Questions Creation
 
-    def create_question(self, chunk_ids: list[int], system_prompt: str, output_schema: dict, temperature: float = 1) -> dict[str, list[str]]:
+    async def create_question(self, chunk_ids: list[int], system_prompt: str, output_schema: dict, temperature: float = 1) -> dict[str, list[str]]:
         questions = []
         answers = []
         for chunk_id in chunk_ids:
             chunk_text = get_chunk_obj(self.chunks_path, self.chunks_index, chunk_id)['content']
             user_prompt = f"Chunk:\n\"{chunk_text}\""
-            response = self.llm.generate(
+            response = await self.llm.generate(
                 user_prompt=user_prompt,
                 system_prompt=system_prompt,
                 schema=output_schema,

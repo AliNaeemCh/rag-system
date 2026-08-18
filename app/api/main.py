@@ -6,7 +6,8 @@ from app.core.config import settings
 from app.middleware.payload_limit import PayloadLimitMiddleware
 from app.infra.scheduling.scheduler import scheduler, start_scheduler
 from app.infra.executor import executor
-import app.dependencies.rag_pipeline    # Loads RAG pipeline
+from app.infra.usage_tracking.tracker import usage_tracker_db_pool
+from app.infra.dependencies import build_rag_pipeline
 
 import logging
 logger = logging.getLogger("app.api.main")
@@ -19,11 +20,17 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ---------------- STARTUP ----------------
+    pipeline, rag_db_pool = await build_rag_pipeline()
+    app.state.pipeline = pipeline
+    app.state.rag_db_pool = rag_db_pool
     start_scheduler(scheduler)
 
     yield
 
     # ---------------- SHUTDOWN ----------------
+    if usage_tracker_db_pool:
+        await usage_tracker_db_pool.close()
+    await rag_db_pool.close()
     scheduler.shutdown(wait=True)
     executor.shutdown(wait=True)
 

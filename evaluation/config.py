@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class EvalConfig:
-    num_workers: int = 3
+    max_concurrency: int = 3
     resume: bool = True
     response_mode: ResponseMode = ResponseMode.ADVANCED
     generator_temperature: float = 0

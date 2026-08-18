@@ -3,14 +3,13 @@ from app.rag.config import ResponseMode
 from app.rag.chat_history import chat_history
 from app.dependencies.auth import verify_key
 from app.dependencies.rate_limiter import rate_limit
-from app.dependencies.rag_pipeline import rag_pipeline
 from app.core.config import settings
 
 import logging
 logger = logging.getLogger("app.api.routes.chat")
 logger.info("Loading file...")
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional 
 import uuid
@@ -28,6 +27,9 @@ class ChatResponse(BaseModel):
     response: str
     session_id: str
 
+def rag_pipeline(request: Request):
+    return request.app.state.pipeline
+
 @router.post("/chat",    dependencies=[
         Depends(verify_key),
         Depends(rate_limit)
@@ -44,7 +46,7 @@ async def chat_endpoint(
     
     session_id = request.session_id or str(uuid.uuid4())
 
-    def event_stream():
+    async def event_stream():
 
         try:
             # session start event
@@ -53,7 +55,7 @@ async def chat_endpoint(
                 'session_id': session_id
             })}\n\n"
 
-            stream = pipeline.run(
+            stream = await pipeline.run(
                 user_message=request.message,
                 session_id=session_id,
                 stream=True,
@@ -62,7 +64,7 @@ async def chat_endpoint(
 
             full_response = ""
 
-            for chunk in stream:
+            async for chunk in stream:
                 full_response += chunk
 
                 yield f"data: {json.dumps({

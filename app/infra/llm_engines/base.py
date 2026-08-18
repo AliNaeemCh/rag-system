@@ -1,5 +1,5 @@
 from app.infra.usage_tracking.tracker import UsageTracker
-from app.infra.executor import executor
+import asyncio
 
 import logging
 logger = logging.getLogger("app.infra.llm_engines.base")
@@ -15,7 +15,7 @@ class BaseLLMEngine(ABC):
         self.usage_tracker = usage_tracker
         self.check_usage = check_usage
 
-    def generate(
+    async def generate(
         self,
         user_prompt: str | None = None,
         system_prompt: str = "You are a helpful assistant.",
@@ -29,7 +29,7 @@ class BaseLLMEngine(ABC):
         return_full_response: bool = False
     ):
         if self.usage_tracker and self.check_usage:
-            if self.usage_tracker.usage_exceeded(model_names=[self.model_name], safety_margin_tokens=5000):
+            if await self.usage_tracker.usage_exceeded(model_names=[self.model_name], safety_margin_tokens=5000):
                 raise Exception("Usage limit exceeded!")
             
         history = history or []
@@ -45,11 +45,11 @@ class BaseLLMEngine(ABC):
         )
 
         if stream:
-            return self._stream(request)
+            return await self._stream(request)
 
-        response = self._create(request)
+        response = await self._create(request)
 
-        executor.submit(self._increment_usage, response=response, model_name=self.model_name)   # Token increment runs in bg
+        asyncio.create_task(self._increment_usage(response=response, model_name=self.model_name))   # Token increment runs in bg
 
         text = self._extract_text(response)
 
@@ -77,11 +77,11 @@ class BaseLLMEngine(ABC):
         pass
 
     @abstractmethod
-    def _stream(self, request: dict):
+    async def _stream(self, request: dict):
         pass
 
     @abstractmethod
-    def _create(self, request: dict):
+    async def _create(self, request: dict):
         pass
 
     @abstractmethod
@@ -92,11 +92,15 @@ class BaseLLMEngine(ABC):
     def _extract_usage(self, response: dict) -> dict:
         pass
 
-    def _increment_usage(self, response: dict, model_name: str):
-        if not self.usage_tracker:
-            return
+    async def _increment_usage(self, response: dict, model_name: str):
+        try:
+            if not self.usage_tracker:
+                return
 
-        usage = self._extract_usage(response)
-        total_tokens = usage['total_tokens']
-        # adjust mapping to your DB schema
-        self.usage_tracker.increment(model_name=model_name, tokens=total_tokens)
+            usage = self._extract_usage(response)
+            await self.usage_tracker.increment(
+                model_name=model_name,
+                tokens=usage["total_tokens"],
+            )
+        except Exception:
+            logger.exception("Failed to increment usage")

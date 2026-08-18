@@ -100,21 +100,24 @@ def run_pipeline(
         logger.exception(f"Document Uploading Failed!")
         return
 
-config = DocumentUploadingPipelineConfig(resume=False)
+async def main():
 
-rag_db_pool = get_rag_db_pool()
+    config = DocumentUploadingPipelineConfig(resume=False)
+
+    rag_db_pool = get_rag_db_pool()
 
 
-pg_store: BaseDocumentStore = PgStore(
-    db_pool=rag_db_pool,
-    embedding_dim=settings.EMBEDDING_DIMENSIONS,
-    m=settings.HNSW_M,
-    ef_construction=settings.HNSW_EF_CONSTRUCTION
-)
+    pg_store: BaseDocumentStore = PgStore(
+        db_pool=rag_db_pool,
+        embedding_dim=settings.EMBEDDING_DIMENSIONS,
+        m=settings.HNSW_M,
+        ef_construction=settings.HNSW_EF_CONSTRUCTION
+    )
+    await pg_store.ensure_schema()
 
-run_pipeline(
-    document_store=pg_store,
-    config=config,
-    chunks_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
-    embeddings_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_embeddings.jsonl",
-)
+    run_pipeline(
+        document_store=pg_store,
+        config=config,
+        chunks_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_chunks.jsonl",
+        embeddings_jsonl_path=settings.PROCESSED_DATA_DIR / "sys_annual_2025_embeddings.jsonl",
+    )

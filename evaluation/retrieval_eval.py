@@ -12,20 +12,20 @@ class RetrievalEvaluator:
         self.llm_output_schema = llm_output_schema
         self.system_prompt = system_prompt
     
-    def _get_answerable_questions_via_llm(self, questions: list[str | None], reference_answers: list[str | None], context: str, temperature: float) -> tuple[list[int], dict]:
+    async def _get_answerable_questions_via_llm(self, questions: list[str | None], reference_answers: list[str | None], context: str, temperature: float) -> tuple[list[int], dict]:
         user_prompt = f"""Context:\n\n\"\"\"{context}\"\"\""""
         for i, (q, a) in enumerate(zip(questions, reference_answers)):
             if q and a:
                 user_prompt += "\n\n---\n\n"
                 user_prompt += f"Question {i}: {q}\nReference answer: {a}"
 
-        output = self.llm_judge.generate(system_prompt=self.system_prompt, user_prompt=user_prompt, schema=self.llm_output_schema, temperature=temperature)
+        output = await self.llm_judge.generate(system_prompt=self.system_prompt, user_prompt=user_prompt, schema=self.llm_output_schema, temperature=temperature)
 
         answerable_q_ids = [obj['id'] for obj in output["questions"] if obj["answerable"]]
         
         return answerable_q_ids, output
     
-    def evaluate(self, questions: list[str], relevant_doc_ids: list[int], reference_answers: list[str], retrieved_docs: list[RetrievedDocument], temperature: float = 0) -> float:
+    async def evaluate(self, questions: list[str], relevant_doc_ids: list[int], reference_answers: list[str], retrieved_docs: list[RetrievedDocument], temperature: float = 0) -> float:
         # Metrics
         mrr = 0
         recall_k = 0
@@ -72,7 +72,7 @@ class RetrievalEvaluator:
                     ])
 
                     if any(x is not None for x in filtered_questions):
-                        answerable_qs_indices_by_llm, output = self._get_answerable_questions_via_llm(
+                        answerable_qs_indices_by_llm, output = await self._get_answerable_questions_via_llm(
                             questions=filtered_questions,
                             reference_answers=filtered_answers,
                             context=retrieved_docs[pos].content,

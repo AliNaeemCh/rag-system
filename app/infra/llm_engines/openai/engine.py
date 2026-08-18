@@ -8,7 +8,8 @@ logger = logging.getLogger("app.infra.llm_engines.openai.engine")
 logger.info("Loading file...")
 
 from enum import Enum
-from openai import OpenAI
+from openai import AsyncOpenAI
+import asyncio
 
 class OpenAIAPI(str, Enum):
     RESPONSES = "responses"
@@ -16,7 +17,7 @@ class OpenAIAPI(str, Enum):
 
 class OpenAIEngine(BaseLLMEngine):
 
-    def __init__(self, model_name: str, client: OpenAI, api: OpenAIAPI = OpenAIAPI.RESPONSES, usage_tracker: UsageTracker | None = None, check_usage: bool = True):
+    def __init__(self, model_name: str, client: AsyncOpenAI, api: OpenAIAPI = OpenAIAPI.RESPONSES, usage_tracker: UsageTracker | None = None, check_usage: bool = True):
         super().__init__(model_name=model_name, usage_tracker=usage_tracker, check_usage=check_usage)
         self.client = client
 
@@ -52,26 +53,31 @@ class OpenAIEngine(BaseLLMEngine):
             "reasoning": reasoning,
         }
 
-    def _stream(self, request):
-        gen, state = self.adapter.stream(
+    async def _stream(self, request):
+        gen, state = await self.adapter.stream(
             model_name=self.model_name,
             client=self.client,
             request=request,
         )
 
-        def wrapper():
-            yield from gen
+        async def wrapper():
+            async for chunk in gen:
+                yield chunk
+
             final_response = state["final_response"]
+
             if final_response:
-                self._increment_usage(
-                    response=final_response,
-                    model_name=self.model_name,
+                asyncio.create_task(
+                    self._increment_usage(
+                        response=final_response,
+                        model_name=self.model_name,
+                    )
                 )
 
         return wrapper()
 
-    def _create(self, request):
-        return self.adapter.create(model_name=self.model_name, client=self.client, request=request)
+    async def _create(self, request):
+        return await self.adapter.create(model_name=self.model_name, client=self.client, request=request)
 
     def _extract_text(self, response):
         return self.adapter.extract_text(response)

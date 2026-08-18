@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger("app.infra.llms_engines.openai.adapters.responses")
 logger.info("Loading file...")
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 class OpenAIResponsesAdapter(OpenAIBaseAdapter):
 
@@ -32,24 +32,34 @@ class OpenAIResponsesAdapter(OpenAIBaseAdapter):
         )
     
     @openai_retry(logger)
-    def stream(self, model_name: str, client: OpenAI, request: dict):
-        payload = self._build_payload(model_name=model_name, request=request)
+    async def stream(
+        self,
+        model_name: str,
+        client: AsyncOpenAI,
+        request: dict,
+    ):
+        payload = self._build_payload(
+            model_name=model_name,
+            request=request,
+        )
+
         response = client.responses.stream(**payload)
         state = {"final_response": None}
-        def gen():
-            with response as s:
-                for event in s:
+
+        async def gen():
+            async with response as s:
+                async for event in s:
                     if event.type == "response.output_text.delta" and event.delta:
                         yield event.delta
-                # available after stream completes
-                state["final_response"] = s.get_final_response()
+
+                state["final_response"] = await s.get_final_response()
 
         return gen(), state
 
     @openai_retry(logger)
-    def create(self, model_name: str, client: OpenAI, request: dict):
+    async def create(self, model_name: str, client: AsyncOpenAI, request: dict):
         payload = self._build_payload(model_name=model_name, request=request)
-        return client.responses.create(**payload)
+        return await client.responses.create(**payload)
 
     def extract_text(self, response):
         output_text = response.output_text

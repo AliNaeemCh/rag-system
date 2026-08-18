@@ -8,8 +8,8 @@ import logging
 logger = logging.getLogger("app.infra.vector_stores.pg_vector_store.store")
 logger.info("Loading file...")
 
-from psycopg2.extras import execute_values, Json
-from psycopg2.pool import SimpleConnectionPool
+from psycopg.types.json import Json
+from psycopg_pool import AsyncConnectionPool
 
 class PgStore(BaseRetrievalStore, BaseDocumentStore):
     """
@@ -19,24 +19,23 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
     - HNSW index for ANN retrieval
     """
 
-    def __init__(self, db_pool: SimpleConnectionPool, embedding_dim: int, m: int, ef_construction: int):
+    def __init__(self, db_pool: AsyncConnectionPool, embedding_dim: int, m: int, ef_construction: int):
         self.embedding_dim = embedding_dim
         self.m = m
         self.ef_construction = ef_construction
         self.db_pool = db_pool
-        self._ensure_schema()
 
     @db_retry(retries=settings.RAG_DB_POOL_MAX_CONNS)
-    def _ensure_schema(self):
-        with get_connection(self.db_pool) as conn:
-            with conn.cursor() as cur:
+    async def ensure_schema(self):
+        async with get_connection(self.db_pool) as conn:
+            async with conn.cursor() as cur:
                 # Enable pgvector + pg_search extensions
-                cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+                await cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
                 # -------------------------
                 # Documents table
                 # -------------------------
-                cur.execute(f"""
+                await cur.execute(f"""
                     CREATE TABLE IF NOT EXISTS documents (
                         id BIGSERIAL PRIMARY KEY,
                         content TEXT NOT NULL,
@@ -49,7 +48,7 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
                 # -------------------------
                 # Vector index (HNSW)
                 # -------------------------
-                cur.execute(f"""
+                await cur.execute(f"""
                     CREATE INDEX IF NOT EXISTS documents_embedding_hnsw
                     ON documents
                     USING hnsw (embedding vector_cosine_ops)
@@ -60,16 +59,16 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
                 """)
     
     @db_retry(retries=settings.RAG_DB_POOL_MAX_CONNS)
-    def reset_store(self):
-        with get_connection(self.db_pool) as conn:
-            with conn.cursor() as cur:
+    async def reset_store(self):
+        async with get_connection(self.db_pool) as conn:
+            async with conn.cursor() as cur:
                 # 1. Drop everything
-                cur.execute("DROP TABLE IF EXISTS documents;")
+                await cur.execute("DROP TABLE IF EXISTS documents;")
 
         # 2. Recreate using existing logic
-        self._ensure_schema()
+        await self.ensure_schema()
 
-    def add_document(
+    async def add_document(
         self,
         chunk_id: int,
         content: str,
@@ -80,10 +79,10 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
         if metadata is None:
             metadata = {}
 
-        def _db_op():
-            with get_connection(self.db_pool) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
+        async def _db_op():
+            async with get_connection(self.db_pool) as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
                         """
                         INSERT INTO documents (id, content, embedding, metadata)
                         VALUES (%s, %s, %s, %s)
@@ -91,9 +90,9 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
                         (chunk_id, content, embedding, Json(metadata)),
                     )
 
-        db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
+        await db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
 
-    def add_documents_bulk(self, chunks: list[dict]) -> None:
+    async def add_documents_bulk(self, chunks: list[dict]) -> None:
 
         rows = []
 
@@ -108,11 +107,10 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
             )
 
 
-        def _db_op():
-            with get_connection(self.db_pool) as conn:
-                with conn.cursor() as cur:
-                    execute_values(
-                        cur,
+        async def _db_op():
+            async with get_connection(self.db_pool) as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute_many(
                         """
                         INSERT INTO documents (id, content, embedding, metadata)
                         VALUES %s
@@ -120,9 +118,9 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
                         rows,
                     )
 
-        db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
+        await db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
 
-    def similarity_search(
+    async def similarity_search(
         self,
         query_embedding: list[float],
         top_k: int,
@@ -156,14 +154,14 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
 
         params.extend([query_embedding, top_k])
 
-        def _db_op():
-            with get_connection(self.db_pool) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(f"SET LOCAL hnsw.ef_search = {ef_search}")
-                    cur.execute(sql, params)
-                    return cur.fetchall()
+        async def _db_op():
+            async with get_connection(self.db_pool) as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(f"SET LOCAL hnsw.ef_search = {ef_search}")
+                    await cur.execute(sql, params)
+                    return (await cur.fetchall())
 
-        rows = db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
+        rows = await db_retry(settings.RAG_DB_POOL_MAX_CONNS)(_db_op)()
         
         logger.info("Similarity search completed")
 
@@ -190,7 +188,7 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
                     (ids,),
                 )
 
-    def keyword_search(
+    async def keyword_search(
         self,
         query: str,
         top_k: int,
@@ -202,8 +200,9 @@ class PgStore(BaseRetrievalStore, BaseDocumentStore):
         return []
 
     @db_retry(retries=settings.RAG_DB_POOL_MAX_CONNS)
-    def get_max_chunk_id(self):
-        with get_connection(self.db_pool) as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT COALESCE(MAX(id), 0) FROM documents;")
-                return cur.fetchone()[0]
+    async def get_max_chunk_id(self):
+        async with get_connection(self.db_pool) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT COALESCE(MAX(id), 0) FROM documents;")
+                chunk_id = await cur.fetchone()[0]
+                return chunk_id

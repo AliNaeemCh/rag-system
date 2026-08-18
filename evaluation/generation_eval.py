@@ -50,7 +50,7 @@ class GenerationEvaluator:
         
         return user_prompt
 
-    def evaluate_faithfulness(self,
+    async def evaluate_faithfulness(self,
                              questions: list[str],
                              retrieved_docs: list[RetrievedDocument],
                              generated_answer: str,
@@ -60,7 +60,7 @@ class GenerationEvaluator:
         
         user_prompt = self._create_user_prompt(questions=questions, retrieved_docs=retrieved_docs, generated_answer=generated_answer)
 
-        output = self.llm_judge.generate(
+        output = await self.llm_judge.generate(
             user_prompt=user_prompt,
             system_prompt=system_prompt,
             schema=output_schema,
@@ -79,7 +79,7 @@ class GenerationEvaluator:
         
         return {"faithfulness": faithfulness, "correct_points": correct_points, "total_points": total_points} | output
 
-    def evaluate_reference_coverage(self,
+    async def evaluate_reference_coverage(self,
                              questions: list[str],
                              reference_answers: list[str],
                              generated_answer: str,
@@ -89,7 +89,7 @@ class GenerationEvaluator:
         
         user_prompt = self._create_user_prompt(questions=questions, reference_answers=reference_answers, generated_answer=generated_answer)
 
-        output = self.llm_judge.generate(
+        output = await self.llm_judge.generate(
             user_prompt=user_prompt,
             system_prompt=system_prompt,
             schema=output_schema,

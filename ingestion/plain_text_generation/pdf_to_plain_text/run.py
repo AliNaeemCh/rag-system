@@ -11,6 +11,8 @@ import logging
 logger = logging.getLogger("ingestion.plain_text_generation.pdf_to_plain_text.run")
 logger.info("Loading file...")
 
+import asyncio
+
 raw_config = {
     "pdf_path": settings.RAW_DATA_DIR / "SYS Limited Annual - 2025.pdf",
     "jsonl_path": settings.PROCESSED_DATA_DIR / "SYS Limited Annual - 2025.jsonl",
@@ -78,11 +80,14 @@ raw_config = {
     "resume_transcription": True
 }
 
-pdf_config = build_pdf_config(raw_config)
-gemini_openai_client = create_openai_client(api_key=settings.GEMINI_API_KEY, base_url=settings.GEMINI_OPENAI_BASE_URL)
+async def main():
+  pdf_config = build_pdf_config(raw_config)
+  gemini_openai_client = create_openai_client(api_key=settings.GEMINI_API_KEY, base_url=settings.GEMINI_OPENAI_BASE_URL)
 
-pdf_ingestor_llm_engine = OpenAIEngine(model_name=settings.PDF_TRANSCRIBER_MODEL, client=gemini_openai_client, api=OpenAIAPI.CHAT_COMPLETIONS)
-pdf_ingestor_fallback_llm_engine = OpenAIEngine(model_name=settings.PDF_TRANSCRIBER_FALLBACK_MODEL, client=gemini_openai_client, api=OpenAIAPI.CHAT_COMPLETIONS)
+  pdf_ingestor_llm_engine = OpenAIEngine(model_name=settings.PDF_TRANSCRIBER_MODEL, client=gemini_openai_client, api=OpenAIAPI.CHAT_COMPLETIONS)
+  pdf_ingestor_fallback_llm_engine = OpenAIEngine(model_name=settings.PDF_TRANSCRIBER_FALLBACK_MODEL, client=gemini_openai_client, api=OpenAIAPI.CHAT_COMPLETIONS)
 
-ingestor = PDFIngestor(llm_engine=pdf_ingestor_llm_engine, fallback_llm_engine=pdf_ingestor_fallback_llm_engine)
-ingestor.ingest(pdf_config)
+  ingestor = PDFIngestor(llm_engine=pdf_ingestor_llm_engine, fallback_llm_engine=pdf_ingestor_fallback_llm_engine)
+  await ingestor.ingest(pdf_config)
+
+asyncio.run(main())

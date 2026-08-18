@@ -13,7 +13,7 @@ class BaseRetrievalStore(ABC):
     """
 
     @abstractmethod
-    def similarity_search(
+    async def similarity_search(
         self,
         query_embedding: list[float],
         top_k: int,
@@ -25,7 +25,7 @@ class BaseRetrievalStore(ABC):
         pass
     
     @abstractmethod
-    def keyword_search(
+    async def keyword_search(
         self,
         query: str,
         top_k: int,
@@ -42,7 +42,7 @@ class BaseDocumentStore(ABC):
     """
 
     @abstractmethod
-    def add_document(
+    async def add_document(
         self,
         chunk_id: str,
         content: str,
@@ -55,7 +55,7 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def add_documents_bulk(
+    async def add_documents_bulk(
         self,
         chunks: list[dict]
     ) -> None:

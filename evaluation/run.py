@@ -5,7 +5,7 @@ from app.core.config import settings
 from app.rag.pipeline import RAGPipeline
 from app.infra.dependencies import build_rag_pipeline, create_openai_client
 from app.core.utils import load_jsonl, extract_last_jsonl_object, reset_jsonl, write_jsonl, write_json
-from app.infra.usage_tracking.tracker import usage_tracker
+from app.infra.usage_tracking.tracker import get_usage_tracker
 from evaluation.config import EvalConfig
 from app.rag.config import ResponseMode
 from evaluation.retrieval_eval import RetrievalEvaluator
@@ -26,10 +26,10 @@ logger = logging.getLogger("evaluation.run")
 logger.info("Loading file...")
 
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from tqdm import tqdm
+import asyncio
 
-def process_example(rag_pipeline: RAGPipeline,
+async def process_example(rag_pipeline: RAGPipeline,
                     retrieval_eval: RetrievalEvaluator,
                     generation_eval: GenerationEvaluator,
                     question_type: EvalQuestionType,
@@ -45,7 +45,7 @@ def process_example(rag_pipeline: RAGPipeline,
     question = " ".join(questions)
 
     # Inference
-    output = rag_pipeline.run(
+    output = await rag_pipeline.run(
         user_message=question,
         session_id="1",
         stream=False,
@@ -59,7 +59,7 @@ def process_example(rag_pipeline: RAGPipeline,
     generated_answer = output['response']
 
     # Retrieval eval
-    retrieval_results = retrieval_eval.evaluate(
+    retrieval_results = await retrieval_eval.evaluate(
         questions=questions,
         relevant_doc_ids=relevant_doc_ids,
         reference_answers=reference_answers,
@@ -68,7 +68,7 @@ def process_example(rag_pipeline: RAGPipeline,
     )
 
     # Generation eval
-    reference_coverage_result = generation_eval.evaluate_reference_coverage(
+    reference_coverage_result = await generation_eval.evaluate_reference_coverage(
         questions=questions,
         reference_answers=reference_answers,
         generated_answer=generated_answer,
@@ -77,7 +77,7 @@ def process_example(rag_pipeline: RAGPipeline,
         temperature=generation_eval_temperature
     )
 
-    faithfulness_result = generation_eval.evaluate_faithfulness(
+    faithfulness_result = await generation_eval.evaluate_faithfulness(
         questions=questions,
         retrieved_docs=retrieved_docs,
         generated_answer=generated_answer,
@@ -101,7 +101,7 @@ def process_example(rag_pipeline: RAGPipeline,
         }
     }
 
-def run_pipeline(config: EvalConfig,
+async def run_pipeline(config: EvalConfig,
                  rag_pipeline: RAGPipeline,
                  retrieval_eval: RetrievalEvaluator,
                  generation_eval: GenerationEvaluator,
@@ -227,78 +227,77 @@ def run_pipeline(config: EvalConfig,
 
         pbar = tqdm(total=100)
 
-        with ThreadPoolExecutor(max_workers=config.num_workers) as executor:
-            futures = set()
-            future_to_metadata = {}
-            initial_progress_refresh = False
-            for obj, progress in load_jsonl(dataset_path, return_progress=True):
-                if obj['example_id'] in completed_example_ids:
-                    initial_progress_refresh = True
-                    continue
+        tasks = set()
+        task_to_metadata = {}
+        initial_progress_refresh = False
+        for obj, progress in load_jsonl(dataset_path, return_progress=True):
+            if obj['example_id'] in completed_example_ids:
+                initial_progress_refresh = True
+                continue
 
-                if initial_progress_refresh:
-                    pbar.n = int(progress * 100)
-                    pbar.refresh()
-                    initial_progress_refresh = False
+            if initial_progress_refresh:
+                pbar.n = int(progress * 100)
+                pbar.refresh()
+                initial_progress_refresh = False
 
-                question_type = EvalQuestionType(obj['question_type'])
-                relevant_doc_ids = []
-                reference_answers = []
+            question_type = EvalQuestionType(obj['question_type'])
+            relevant_doc_ids = []
+            reference_answers = []
 
-                for i, id in enumerate(obj['chunk_ids']):
-                    relevant_doc_ids.append(id)
-                    reference_answers.append(obj['answers'][i])
-                
-                if len(futures) >= config.num_workers:
-                    done, _ = wait(futures, return_when=FIRST_COMPLETED)
-                    for future in done:
-                        result = future.result()
-                        write_jsonl(
-                            data= {"example_id": future_to_metadata[future]["example_id"]} | result,
-                            output_path=raw_result_path
-                        )
-                        update_eval_results(eval_results, new_result=result)
-                        del future_to_metadata[future]
-                        futures.remove(future)
-
-                    pbar.n = int(progress * 100)
-                    pbar.refresh()
-
-                future = executor.submit(process_example,
-                                         rag_pipeline=rag_pipeline,
-                                         retrieval_eval=retrieval_eval,
-                                         generation_eval=generation_eval,
-                                         question_type=question_type,
-                                         questions=obj['questions'],
-                                         relevant_doc_ids=relevant_doc_ids,
-                                         reference_answers=reference_answers,
-                                         response_mode=config.response_mode,
-                                         rewriter_temperature=config.rewriter_temperature,
-                                         generator_temperature=config.generator_temperature,
-                                         retrieval_eval_temperature=config.retrieval_eval_temperature,
-                                         generation_eval_temperature=config.generation_eval_temperature
-                                         )
-                futures.add(future)
-                future_to_metadata[future] = {
-                    "example_id": obj['example_id']
-                }
-
-            # Drain remaining futures
-            while futures:
-                done, _ = wait(futures, return_when=FIRST_COMPLETED)
-
-                for future in done:
-                    result = future.result()
+            for i, id in enumerate(obj['chunk_ids']):
+                relevant_doc_ids.append(id)
+                reference_answers.append(obj['answers'][i])
+            
+            if len(tasks) >= config.max_concurrency:
+                done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                for task in done:
+                    result = task.result()
                     write_jsonl(
-                        data= {"example_id": future_to_metadata[future]["example_id"]} | result,
+                        data= {"example_id": task_to_metadata[task]["example_id"]} | result,
                         output_path=raw_result_path
                     )
                     update_eval_results(eval_results, new_result=result)
-                    del future_to_metadata[future]
-                    futures.remove(future)
+                    del task_to_metadata[task]
+                    tasks.remove(task)
 
                 pbar.n = int(progress * 100)
                 pbar.refresh()
+
+            task = asyncio.create_task(process_example(
+                                        rag_pipeline=rag_pipeline,
+                                        retrieval_eval=retrieval_eval,
+                                        generation_eval=generation_eval,
+                                        question_type=question_type,
+                                        questions=obj['questions'],
+                                        relevant_doc_ids=relevant_doc_ids,
+                                        reference_answers=reference_answers,
+                                        response_mode=config.response_mode,
+                                        rewriter_temperature=config.rewriter_temperature,
+                                        generator_temperature=config.generator_temperature,
+                                        retrieval_eval_temperature=config.retrieval_eval_temperature,
+                                        generation_eval_temperature=config.generation_eval_temperature
+                                        ))
+            tasks.add(task)
+            task_to_metadata[task] = {
+                "example_id": obj['example_id']
+            }
+
+        # Drain remaining tasks
+        while tasks:
+            done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
+            for task in done:
+                result = task.result()
+                write_jsonl(
+                    data= {"example_id": task_to_metadata[task]["example_id"]} | result,
+                    output_path=raw_result_path
+                )
+                update_eval_results(eval_results, new_result=result)
+                del task_to_metadata[task]
+                tasks.remove(task)
+
+            pbar.n = int(progress * 100)
+            pbar.refresh()
 
         logging.getLogger().setLevel(logging.INFO)  # Restoring logs
 
@@ -310,21 +309,26 @@ def run_pipeline(config: EvalConfig,
     except:
         logger.exception("Evaluation failed!")
 
-config = EvalConfig(resume=True)
-rag_pipeline = build_rag_pipeline()
-openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY)
-llm_judge = OpenAIEngine(model_name=settings.LLM_JUDGE_MODEL, client=openai_client, usage_tracker=usage_tracker)
+async def main():
 
-retrieval_eval = RetrievalEvaluator(llm_judge=llm_judge, system_prompt=ANSWERABLE_QS_SYSTEM_PROMPT, llm_output_schema=ANSWERABLE_QS_SCHEMA)
-generation_eval = GenerationEvaluator(llm_judge=llm_judge)
+    config = EvalConfig(resume=True)
+    rag_pipeline = build_rag_pipeline()
+    openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY)
+    usage_tracker = await get_usage_tracker()
+    llm_judge = OpenAIEngine(model_name=settings.LLM_JUDGE_MODEL, client=openai_client, usage_tracker=usage_tracker)
 
-run_pipeline(
-    config=config,
-    rag_pipeline=rag_pipeline,
-    retrieval_eval=retrieval_eval,
-    generation_eval=generation_eval,
-    dataset_path=settings.EVAL_DATASET_DIR / "eval_dataset.jsonl",
-    config_path=settings.EVAL_RESULTS_DIR / "config.json",
-    raw_result_path=settings.EVAL_RESULTS_DIR / "raw_results.jsonl",
-    final_result_path=settings.EVAL_RESULTS_DIR / "final_result.json"
-)
+    retrieval_eval = RetrievalEvaluator(llm_judge=llm_judge, system_prompt=ANSWERABLE_QS_SYSTEM_PROMPT, llm_output_schema=ANSWERABLE_QS_SCHEMA)
+    generation_eval = GenerationEvaluator(llm_judge=llm_judge)
+
+    await run_pipeline(
+        config=config,
+        rag_pipeline=rag_pipeline,
+        retrieval_eval=retrieval_eval,
+        generation_eval=generation_eval,
+        dataset_path=settings.EVAL_DATASET_DIR / "eval_dataset.jsonl",
+        config_path=settings.EVAL_RESULTS_DIR / "config.json",
+        raw_result_path=settings.EVAL_RESULTS_DIR / "raw_results.jsonl",
+        final_result_path=settings.EVAL_RESULTS_DIR / "final_result.json"
+    )
+
+asyncio.run(main())

@@ -3,7 +3,7 @@ logger = logging.getLogger("app.infra.llm_engines.openai.adapters.base")
 logger.info("Loading file...")
 
 from abc import ABC, abstractmethod
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 class OpenAIBaseAdapter(ABC):
 
@@ -12,11 +12,11 @@ class OpenAIBaseAdapter(ABC):
         pass
 
     @abstractmethod
-    def stream(self, model_name: str, client: OpenAI, request: dict):
+    def stream(self, model_name: str, client: AsyncOpenAI, request: dict):
         pass
 
     @abstractmethod
-    def create(self, model_name: str, client: OpenAI, request: dict):
+    def create(self, model_name: str, client: AsyncOpenAI, request: dict):
         pass
 
     @abstractmethod

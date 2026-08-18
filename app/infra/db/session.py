@@ -2,20 +2,14 @@ import logging
 logger = logging.getLogger("app.infra.db.session")
 logger.info("Loading file...")
 
-from contextlib import contextmanager
-from psycopg2.pool import SimpleConnectionPool
-from psycopg2.extensions import connection
-from typing import Iterator
+from contextlib import asynccontextmanager
+from psycopg_pool import AsyncConnectionPool
+from psycopg import AsyncConnection
+from typing import AsyncGenerator
 
-@contextmanager
-def get_connection(pool: SimpleConnectionPool) -> Iterator[connection]:
-    conn = pool.getconn()
-    try:
+@asynccontextmanager
+async def get_connection(
+    pool: AsyncConnectionPool,
+) -> AsyncGenerator[AsyncConnection, None]:
+    async with pool.connection() as conn:
         yield conn
-        conn.commit()
-        pool.putconn(conn)
-
-    except Exception:
-        # always discard broken connections
-        pool.putconn(conn, close=True)
-        raise

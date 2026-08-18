@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger("app.infra.llm_engines.openai.adapters.chat_completions")
 logger.info("Loading file...")
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 class OpenAIChatCompletionsAdapter(OpenAIBaseAdapter):
     
@@ -33,7 +33,7 @@ class OpenAIChatCompletionsAdapter(OpenAIBaseAdapter):
     
 
     @openai_retry(logger)
-    def stream(self, model_name: str, client: OpenAI, request: dict):
+    def stream(self, model_name: str, client: AsyncOpenAI, request: dict):
         payload = self._build_payload(model_name=model_name, request=request)
         payload["stream"] = True
 
@@ -48,7 +48,7 @@ class OpenAIChatCompletionsAdapter(OpenAIBaseAdapter):
         return gen()
     
     @openai_retry(logger)
-    def create(self, model_name: str, client: OpenAI, request: dict):
+    def create(self, model_name: str, client: AsyncOpenAI, request: dict):
         payload = self._build_payload(model_name=model_name, request=request)
         return client.chat.completions.create(**payload)
 

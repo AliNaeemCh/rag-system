@@ -5,12 +5,12 @@ logger.info("Loading file...")
 from pathlib import Path
 
 def create_openai_client(api_key: str, base_url: str | None = None):
-    from openai import OpenAI
-    return OpenAI(api_key=api_key, base_url=base_url)
+    from openai import AsyncOpenAI
+    return AsyncOpenAI(api_key=api_key, base_url=base_url)
 
 def create_hf_inference_client(hf_token: str):
-    from huggingface_hub import InferenceClient
-    return InferenceClient(provider="hf-inference", api_key=hf_token)
+    from huggingface_hub import AsyncInferenceClient
+    return AsyncInferenceClient(provider="hf-inference", api_key=hf_token)
 
 # ML models
 def get_reranker_model(model_path: Path):
@@ -32,8 +32,8 @@ def get_embedding_model(model_path: Path, device: str | None = None):
 
 # RAG pipeline
 
-def build_rag_pipeline():
-    from app.infra.usage_tracking.tracker import usage_tracker
+async def build_rag_pipeline():
+    from app.infra.usage_tracking.tracker import get_usage_tracker
     from app.infra.retrieval.postgres.store import PgStore
     from app.rag.chat_history import chat_history
     from app.prompts.rag import GENERATOR_SYSTEM_PROMPT, REWRITER_SYSTEM_PROMPT, REWRITER_SCHEMA
@@ -47,11 +47,14 @@ def build_rag_pipeline():
     from app.core.config import settings
     from app.infra.db.pool import get_rag_db_pool
 
+    usage_tracker = await get_usage_tracker()
     openai_client = create_openai_client(api_key=settings.OPENAI_API_KEY)
     llm_generator = OpenAIEngine(model_name=settings.GENERATOR_MODEL, client=openai_client, usage_tracker=usage_tracker, check_usage=False)
     llm_rewriter = OpenAIEngine(model_name=settings.REWRITER_MODEL, client=openai_client, usage_tracker=usage_tracker, check_usage=False)
     rag_db_pool = get_rag_db_pool()
+    await rag_db_pool.open()
     pg_store = PgStore(db_pool=rag_db_pool, embedding_dim=settings.EMBEDDING_DIMENSIONS, m=settings.HNSW_M, ef_construction=settings.HNSW_EF_CONSTRUCTION)
+    await pg_store.ensure_schema()
     hf_inference_client = create_hf_inference_client(settings.HF_TOKEN)
     embedding_model = "sentence-transformers/" + settings.EMBEDDING_MODEL
     embedding_provider = HuggingFaceEmbeddingProvider(client=hf_inference_client, model=embedding_model, retrieval_instruction=settings.RETRIEVAL_INSTRUCTION)
@@ -66,4 +69,4 @@ def build_rag_pipeline():
         retriever=retriever,
         reranker=reranker,
         generator=generator
-    )
+    ), rag_db_pool

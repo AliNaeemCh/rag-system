@@ -12,7 +12,7 @@ class MessageRewriter:
         self.system_prompt = system_prompt
         self.output_schema = output_schema
 
-    def rewrite(self, message: str, chat_history: list = [], temperature: float = 0) -> str:
+    async def rewrite(self, message: str, chat_history: list = [], temperature: float = 0) -> str:
         """
         Rewrite user query into retrieval-optimized query.
         """
@@ -22,7 +22,7 @@ class MessageRewriter:
         user_prompt = build_rewriter_user_prompt(message, chat_history)
 
         # 2. Call LLM
-        response = self.llm.generate(user_prompt=user_prompt, system_prompt=self.system_prompt, temperature=temperature, schema=self.output_schema)
+        response = await self.llm.generate(user_prompt=user_prompt, system_prompt=self.system_prompt, temperature=temperature, schema=self.output_schema)
 
         # 3. Extract required fields
         rewritten_message = response["rewritten_message"]

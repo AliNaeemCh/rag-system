@@ -14,7 +14,7 @@ class Retriever:
         self.dense_top_k = dense_top_k
         self.sparse_top_k = sparse_top_k
 
-    def retrieve(self, query: str,
+    async def retrieve(self, query: str,
                  filters: dict | None = None,
                  normalize_query: bool = True,
                  ef_search: int | None = None,
@@ -30,10 +30,10 @@ class Retriever:
         logger.info(f"Retrieval started")
 
         # 1. Get embedding
-        query_embedding = self.embedding_provider.embed_query(query, normalize=normalize_query)
+        query_embedding = await self.embedding_provider.embed_query(query, normalize=normalize_query)
 
         # 2. Similarity search
-        dense_docs = self.retrieval_store.similarity_search(
+        dense_docs = await self.retrieval_store.similarity_search(
             query_embedding=query_embedding,
             top_k=self.dense_top_k,
             ef_search=ef_search,
@@ -41,7 +41,7 @@ class Retriever:
         )
 
         # 3. Keyword search
-        sparse_docs = self.retrieval_store.keyword_search(
+        sparse_docs = await self.retrieval_store.keyword_search(
             query=query,
             top_k=self.sparse_top_k,
             filters=filters

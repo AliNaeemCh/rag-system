@@ -91,7 +91,7 @@ class PDFIngestor:
         return pages_list, pages_completed, total_pages
 
     # ---------------- MAIN PIPELINE ----------------
-    def ingest(
+    async def ingest(
         self,
         pdf_config: PDFIngestionConfig
     ):
@@ -130,11 +130,11 @@ class PDFIngestor:
                 page_image_data_url = pdf_page_to_image(pdf_config.pdf_path, page_no, dpi=100)
                 user_prompt = f"Previous section transcription:\n{previous_section_transcription}"
                 llm_engine = self.llm_engine
-                trancribed_page, response = llm_engine.generate(user_prompt, system_prompt=PDF_TRANSCRIBER_SYSTEM_PROMPT, image_urls=page_image_data_url, return_full_response=True)
+                trancribed_page, response = await llm_engine.generate(user_prompt, system_prompt=PDF_TRANSCRIBER_SYSTEM_PROMPT, image_urls=page_image_data_url, return_full_response=True)
                 if trancribed_page is None:
                     logger.info(f"Main LLM couldn't transcribe page {page_no}! Using fallback model.")
                     llm_engine = self.fallback_llm_engine
-                    trancribed_page, response = llm_engine.generate(user_prompt, system_prompt=PDF_TRANSCRIBER_SYSTEM_PROMPT, image_urls=page_image_data_url, return_full_response=True)
+                    trancribed_page, response = await llm_engine.generate(user_prompt, system_prompt=PDF_TRANSCRIBER_SYSTEM_PROMPT, image_urls=page_image_data_url, return_full_response=True)
                     if trancribed_page is None:
                         trancribed_page = "<TRANSCRIPTION FAILED!>"
                         logger.error(f"Page {page_no} transcription failed! (LLM output is None)")

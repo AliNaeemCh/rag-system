@@ -5,7 +5,7 @@ from app.rag.reranker import Reranker
 from app.rag.generator import Generator
 from app.core.config import settings
 from app.rag.config import ResponseMode
-from app.infra.usage_tracking.tracker import usage_tracker
+from app.infra.usage_tracking.tracker import get_usage_tracker
 from app.rag.utils import reciprocal_rank_fusion
 from app.models import RetrievedDocument
 
@@ -21,17 +21,18 @@ class RAGPipeline:
         self.reranker = reranker
         self.generator = generator
 
-    def run(self, user_message: str, session_id: str, stream: bool = True, eval_mode: bool = False, response_mode: ResponseMode = ResponseMode.ADVANCED, rewriter_temperature: float = 0, generator_temperature: float = 0) -> str | dict[str, list[RetrievedDocument] | str]:
+    async def run(self, user_message: str, session_id: str, stream: bool = True, eval_mode: bool = False, response_mode: ResponseMode = ResponseMode.ADVANCED, rewriter_temperature: float = 0, generator_temperature: float = 0) -> str | dict[str, list[RetrievedDocument] | str]:
         try:
 
             logger.info(f"User message received: {user_message}")
 
             # Usage tracking
+            usage_tracker = await get_usage_tracker()
             if usage_tracker:
                 model_names = [self.generator.llm.model_name]
                 if response_mode != ResponseMode.FAST:
                     model_names.append(self.rewriter.llm.model_name)
-                usage_exceeded = usage_tracker.usage_exceeded(model_names=model_names)
+                usage_exceeded = await usage_tracker.usage_exceeded(model_names=model_names)
                 if usage_exceeded:
                     raise Exception ("Usage limit exceeded!")
                 
@@ -51,12 +52,12 @@ class RAGPipeline:
 
             # 3. Rewrite message (uses context)
             if response_mode != ResponseMode.FAST:
-                rewritten_message = self.rewriter.rewrite(message=user_message, chat_history=chat_history, temperature=rewriter_temperature)
+                rewritten_message = await self.rewriter.rewrite(message=user_message, chat_history=chat_history, temperature=rewriter_temperature)
 
                 logger.debug(f"Rewritten message for retriever: {rewritten_message}")
 
             # 4. Retrieve documents
-            docs = self.retriever.retrieve(rewritten_message, ef_search=settings.HNSW_EF_SEARCH)
+            docs = await self.retriever.retrieve(rewritten_message, ef_search=settings.HNSW_EF_SEARCH)
 
             logger.debug(f"Retrived docs are:\n{docs}")
 
@@ -80,7 +81,7 @@ class RAGPipeline:
 
             if response_mode == ResponseMode.ADVANCED:
                 # 6. Rerank documents
-                final_top_docs = self.reranker.rerank(rewritten_message, docs)
+                final_top_docs = await self.reranker.rerank(rewritten_message, docs)
             
             logger.debug(f"Top ranked docs are:\n{final_top_docs}")
 
@@ -92,10 +93,10 @@ class RAGPipeline:
 
             if stream:
 
-                def gen():
+                async def gen():
                     full_response = ""
                     log_streaming_started = True
-                    for chunk in self.generator.generate(
+                    async for chunk in await self.generator.generate(
                         user_message=user_message,
                         retrieved_context=retrieved_context,
                         history=chat_history,
@@ -121,7 +122,7 @@ class RAGPipeline:
                 return gen()
 
             else:
-                response = self.generator.generate(
+                response = await self.generator.generate(
                     user_message=user_message,
                     retrieved_context=retrieved_context,
                     history=chat_history,

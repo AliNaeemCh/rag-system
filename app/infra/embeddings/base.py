@@ -9,11 +9,11 @@ from typing import Union, List
 class BaseEmbeddingProvider(ABC):
 
     @abstractmethod
-    def embed_query(self, query: str, normalize: bool = True):
+    async def embed_query(self, query: str, normalize: bool = True):
         pass
 
     @abstractmethod
-    def embed_documents(self, documents: list[str] | str, batch_size: int | None = None, normalize: bool = True):
+    async def embed_documents(self, documents: list[str] | str, batch_size: int | None = None, normalize: bool = True):
         pass
 
     def _normalize_embeddings(
