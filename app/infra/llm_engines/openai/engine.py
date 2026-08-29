@@ -53,9 +53,9 @@ class OpenAIEngine(BaseLLMEngine):
             "reasoning": reasoning,
         }
 
-    async def _stream(self, request):
+    async def _stream(self, request, model_name: str | None = None):
         gen, state = await self.adapter.stream(
-            model_name=self.model_name,
+            model_name=model_name or self.model_name,
             client=self.client,
             request=request,
         )
@@ -70,14 +70,14 @@ class OpenAIEngine(BaseLLMEngine):
                 asyncio.create_task(
                     self._increment_usage(
                         response=final_response,
-                        model_name=self.model_name,
+                        model_name=model_name or self.model_name,
                     )
                 )
 
         return wrapper()
 
-    async def _create(self, request):
-        return await self.adapter.create(model_name=self.model_name, client=self.client, request=request)
+    async def _create(self, request, model_name: str | None = None):
+        return await self.adapter.create(model_name=model_name or self.model_name, client=self.client, request=request)
 
     def _extract_text(self, response):
         return self.adapter.extract_text(response)

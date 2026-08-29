@@ -17,6 +17,7 @@ class BaseLLMEngine(ABC):
 
     async def generate(
         self,
+        model_name: str | None = None,
         user_prompt: str | None = None,
         system_prompt: str = "You are a helpful assistant.",
         history: list[dict] | None = None,
@@ -28,8 +29,9 @@ class BaseLLMEngine(ABC):
         image_urls: str | list[str] | None = None,
         return_full_response: bool = False
     ):
+        model_name = model_name or self.model_name
         if self.usage_tracker and self.check_usage:
-            if await self.usage_tracker.usage_exceeded(model_names=[self.model_name], safety_margin_tokens=5000):
+            if await self.usage_tracker.usage_exceeded(model_names=[model_name], safety_margin_tokens=5000):
                 raise Exception("Usage limit exceeded!")
             
         history = history or []
@@ -45,11 +47,11 @@ class BaseLLMEngine(ABC):
         )
 
         if stream:
-            return await self._stream(request)
+            return await self._stream(request, model_name=model_name)
 
         response = await self._create(request)
 
-        asyncio.create_task(self._increment_usage(response=response, model_name=self.model_name))   # Token increment runs in bg
+        asyncio.create_task(self._increment_usage(response=response, model_name=model_name))   # Token increment runs in bg
 
         text = self._extract_text(response)
 
@@ -77,11 +79,11 @@ class BaseLLMEngine(ABC):
         pass
 
     @abstractmethod
-    async def _stream(self, request: dict):
+    async def _stream(self, request: dict, model_name: str | None = None):
         pass
 
     @abstractmethod
-    async def _create(self, request: dict):
+    async def _create(self, request: dict, model_name: str | None = None):
         pass
 
     @abstractmethod

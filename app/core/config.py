@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
     OPENAI_API_KEY: str
     HF_TOKEN: str
+    API_USERNAME: str
+    API_PASSWORD: str
+    DEFAULT_LLM_MODEL: str = "gpt-5.4-mini"
     GENERATOR_MODEL: str = "gpt-5.4-mini"
     REWRITER_MODEL: str = "gpt-5.4-nano"
     PDF_TRANSCRIBER_MODEL: str = "gemini-3.1-flash-lite"

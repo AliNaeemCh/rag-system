@@ -1,12 +1,13 @@
 from app.rag.pipeline import RAGPipeline
 from app.rag.config import ResponseMode
 from app.rag.chat_history import chat_history
-from app.dependencies.auth import verify_key
+from app.dependencies.auth import verify_credentials
 from app.dependencies.rate_limiter import rate_limit
 from app.core.config import settings
+from app.models import RetrievedDocument
 
 import logging
-logger = logging.getLogger("app.api.routes.chat")
+logger = logging.getLogger("app.api.routes.inference")
 logger.info("Loading file...")
 
 from fastapi import APIRouter, Depends, Request
@@ -18,20 +19,21 @@ from fastapi.responses import StreamingResponse, JSONResponse
 
 router = APIRouter()
 
-class ChatRequest(BaseModel):
+class InferenceRequest(BaseModel):
     message: str
     mode: str
+
+class ChatRequest(InferenceRequest):
     session_id: Optional[str] = Field(default=None)
 
-class ChatResponse(BaseModel):
+class EvaluatorInferenceResponse(BaseModel):
+    final_top_docs: list[RetrievedDocument]
     response: str
-    session_id: str
 
 def rag_pipeline(request: Request):
     return request.app.state.pipeline
 
 @router.post("/chat",    dependencies=[
-        Depends(verify_key),
         Depends(rate_limit)
     ])
 async def chat_endpoint(
@@ -95,3 +97,34 @@ async def chat_endpoint(
         event_stream(),
         media_type="text/event-stream"
     )
+
+@router.post(
+    "/evaluator/inference",
+    response_model=EvaluatorInferenceResponse,
+    dependencies=[
+        Depends(verify_credentials)
+    ],
+)
+async def evaluator_inference_endpoint(
+    request: InferenceRequest,
+    pipeline: RAGPipeline = Depends(rag_pipeline),
+):
+
+    try:
+        response = await pipeline.run(
+            user_message=request.message,
+            session_id="",
+            stream=False,
+            eval_mode=True,
+            response_mode=ResponseMode(request.mode),
+        )
+
+        return EvaluatorInferenceResponse(**response)
+
+    except Exception as e:
+        logger.exception("Error in evaluator inference endpoint.")
+
+        return JSONResponse(
+            status_code=500,
+            detail="Something went wrong.",
+        )
