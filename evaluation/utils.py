@@ -128,35 +128,51 @@ def aggregate_eval_results(eval_results: dict) -> None:
     # Retrieval
     for q_type, results in eval_results['retrieval']['question_type_to_result'].items():
         if q_type != EvalQuestionType.MULTI_CHUNK:
-            results['mrr']['mrr'] = results['mrr']['sum'] / results['mrr']['values']
-            results['recall_k']['recall_k'] = results['recall_k']['sum'] / results['recall_k']['values']
+            if results['mrr']['values'] > 0:
+                results['mrr']['mrr'] = results['mrr']['sum'] / results['mrr']['values']
+            if results['recall_k']['values'] > 0:
+                results['recall_k']['recall_k'] = results['recall_k']['sum'] / results['recall_k']['values']
         else:
             for num_chunks, results_2 in results['num_chunks_to_result'].items():
-                results_2['mrr']['mrr'] = results_2['mrr']['sum'] / results_2['mrr']['values']
-                results_2['recall_k']['recall_k'] = results_2['recall_k']['sum'] / results_2['recall_k']['values']
+                if results_2['mrr']['values'] > 0:
+                    results_2['mrr']['mrr'] = results_2['mrr']['sum'] / results_2['mrr']['values']
+                if results_2['recall_k']['values'] > 0:
+                    results_2['recall_k']['recall_k'] = results_2['recall_k']['sum'] / results_2['recall_k']['values']
 
     multi_chunk_ret_avg_result_obj = eval_results['retrieval']['question_type_to_result'][EvalQuestionType.MULTI_CHUNK.value]['avg_result']
-    multi_chunk_ret_avg_result_obj['mrr']['mrr'] = multi_chunk_ret_avg_result_obj['mrr']['sum'] / multi_chunk_ret_avg_result_obj['mrr']['values']
-    multi_chunk_ret_avg_result_obj['recall_k']['recall_k'] = multi_chunk_ret_avg_result_obj['recall_k']['sum'] / multi_chunk_ret_avg_result_obj['recall_k']['values']
+    if multi_chunk_ret_avg_result_obj['mrr']['values'] > 0:
+        multi_chunk_ret_avg_result_obj['mrr']['mrr'] = multi_chunk_ret_avg_result_obj['mrr']['sum'] / multi_chunk_ret_avg_result_obj['mrr']['values']
+    if multi_chunk_ret_avg_result_obj['recall_k']['values'] > 0:
+        multi_chunk_ret_avg_result_obj['recall_k']['recall_k'] = multi_chunk_ret_avg_result_obj['recall_k']['sum'] / multi_chunk_ret_avg_result_obj['recall_k']['values']
 
     # Generation
     for q_type, results in eval_results['generation']['question_type_to_result'].items():
         if q_type != EvalQuestionType.MULTI_CHUNK:
-            results['reference_coverage']['reference_coverage'] = results['reference_coverage']['sum'] / results['reference_coverage']['values']
-            results['faithfulness']['faithfulness'] = results['faithfulness']['sum'] / results['faithfulness']['values']
+            if results['reference_coverage']['values'] > 0:
+                results['reference_coverage']['reference_coverage'] = results['reference_coverage']['sum'] / results['reference_coverage']['values']
+            if results['faithfulness']['values'] > 0:
+                results['faithfulness']['faithfulness'] = results['faithfulness']['sum'] / results['faithfulness']['values']
         else:
             for num_chunks, results_2 in results['num_chunks_to_result'].items():
-                results_2['reference_coverage']['reference_coverage'] = results_2['reference_coverage']['sum'] / results_2['reference_coverage']['values']
-                results_2['faithfulness']['faithfulness'] = results_2['faithfulness']['sum'] / results_2['faithfulness']['values']
+                if results_2['reference_coverage']['values'] > 0:
+                    results_2['reference_coverage']['reference_coverage'] = results_2['reference_coverage']['sum'] / results_2['reference_coverage']['values']
+                if results_2['faithfulness']['values'] > 0:
+                    results_2['faithfulness']['faithfulness'] = results_2['faithfulness']['sum'] / results_2['faithfulness']['values']
 
     multi_chunk_gen_avg_result_obj = eval_results['generation']['question_type_to_result'][EvalQuestionType.MULTI_CHUNK.value]['avg_result']
-    multi_chunk_gen_avg_result_obj['reference_coverage']['reference_coverage'] = multi_chunk_gen_avg_result_obj['reference_coverage']['sum'] / multi_chunk_gen_avg_result_obj['reference_coverage']['values']
-    multi_chunk_gen_avg_result_obj['faithfulness']['faithfulness'] = multi_chunk_gen_avg_result_obj['faithfulness']['sum'] / multi_chunk_gen_avg_result_obj['faithfulness']['values']
+    if multi_chunk_gen_avg_result_obj['reference_coverage']['values'] > 0:
+        multi_chunk_gen_avg_result_obj['reference_coverage']['reference_coverage'] = multi_chunk_gen_avg_result_obj['reference_coverage']['sum'] / multi_chunk_gen_avg_result_obj['reference_coverage']['values']
+    if multi_chunk_gen_avg_result_obj['faithfulness']['values'] > 0:
+        multi_chunk_gen_avg_result_obj['faithfulness']['faithfulness'] = multi_chunk_gen_avg_result_obj['faithfulness']['sum'] / multi_chunk_gen_avg_result_obj['faithfulness']['values']
 
     # Final result
-    eval_results['retrieval']['final_result']['mrr']['mrr'] = eval_results['retrieval']['final_result']['mrr']['sum'] / eval_results['retrieval']['final_result']['mrr']['values']
-    eval_results['retrieval']['final_result']['recall_k']['recall_k'] = eval_results['retrieval']['final_result']['recall_k']['sum'] / eval_results['retrieval']['final_result']['recall_k']['values']
-
-    eval_results['generation']['final_result']['reference_coverage']['reference_coverage'] = eval_results['generation']['final_result']['reference_coverage']['sum'] / eval_results['generation']['final_result']['reference_coverage']['values']
-    eval_results['generation']['final_result']['faithfulness']['faithfulness'] = eval_results['generation']['final_result']['faithfulness']['sum'] / eval_results['generation']['final_result']['faithfulness']['values']
-        
+    if eval_results['retrieval']['final_result']['mrr']['values'] > 0:
+        eval_results['retrieval']['final_result']['mrr']['mrr'] = eval_results['retrieval']['final_result']['mrr']['sum'] / eval_results['retrieval']['final_result']['mrr']['values']
+    if eval_results['retrieval']['final_result']['recall_k']['values'] > 0:
+        eval_results['retrieval']['final_result']['recall_k']['recall_k'] = eval_results['retrieval']['final_result']['recall_k']['sum'] / eval_results['retrieval']['final_result']['recall_k']['values']
+    
+    if eval_results['generation']['final_result']['reference_coverage']['values'] > 0:
+        eval_results['generation']['final_result']['reference_coverage']['reference_coverage'] = eval_results['generation']['final_result']['reference_coverage']['sum'] / eval_results['generation']['final_result']['reference_coverage']['values']
+    if eval_results['generation']['final_result']['faithfulness']['values'] > 0:
+        eval_results['generation']['final_result']['faithfulness']['faithfulness'] = eval_results['generation']['final_result']['faithfulness']['sum'] / eval_results['generation']['final_result']['faithfulness']['values']
+    
