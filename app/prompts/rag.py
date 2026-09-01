@@ -14,7 +14,7 @@ Rewrite the user’s message so it is self-contained and understandable without 
 * Do not quote user messages or assistant replies from the chat history (if available).
 * Do not add new information or make assumptions.
 * Resolve vague references (e.g., “it”, “this”, “that”) when their meaning is clearly implied by context.
-* Expand abbreviations and acronyms into their full forms when their meaning is clear from the message or context.
+* Expand abbreviations and acronyms into their full forms when their meaning is clear from the message or context. Keep the original abbreviation or acronym as well; do not remove, replace, or omit it when expanding it.
 * If the message is already clear, return it unchanged."""
 
 REWRITER_SCHEMA = {
